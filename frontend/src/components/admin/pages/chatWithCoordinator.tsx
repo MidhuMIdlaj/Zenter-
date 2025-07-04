@@ -1,0 +1,652 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { io, Socket } from "socket.io-client";
+import {
+  ChevronLeft,
+  Send,
+  Search,
+  MoreVertical,
+  Paperclip,
+  Smile,
+  Clock,
+  CheckCheck,
+  Users,
+} from "lucide-react";
+import { fetchEmployees } from "../../../api/admin/Employee";
+import { useSelector } from "react-redux";
+import { selectAdminAuthData } from "../../../store/selectors";
+import { ChatService } from "../../../api/chatService.ts/chatApi";
+
+interface Coordinator {
+  id: string;
+  name: string;
+  avatar: string;
+  status: "available" | "busy" | "offline";
+  lastMessage: string;
+  time: string;
+  unreadCount?: number;
+  employeeId: string;
+  role: "coordinator";
+  hasNewMessages?: boolean;
+  newMessagesCount?: number;
+}
+
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  time: string;
+  isDelivered?: boolean;
+  isRead?: boolean;
+  messageType?: "text" | "task" | "urgent";
+  conversationId: string;
+  senderRole  : string;
+  receiverRole : string;
+}
+
+const formatMessage = (message: any): ChatMessage => ({
+  ...message,
+  id: message.id || message._id || `temp-${Date.now()}`,
+  time: new Date(message.time).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  }),
+  isDelivered: message.isDelivered !== undefined ? message.isDelivered : true,
+  isRead: message.isRead !== undefined ? message.isRead : false,
+});
+
+const determineMessageType = (text: string): "text" | "task" | "urgent" => {
+  if (/urgent|asap|immediately|important/i.test(text)) return "urgent";
+  if (/task|todo|action item/i.test(text)) return "task";
+  return "text";
+};
+
+const AdminCoordinatorChat: React.FC = () => {
+  const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
+  const [selectedCoordinator, setSelectedCoordinator] =
+  useState<Coordinator | null>(null);
+  const [newMessage, setNewMessage] = useState<string>("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [page, setPage] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
+
+  const socketRef = useRef<Socket | null>(null);
+  const { adminData } = useSelector(selectAdminAuthData);
+  const userId = adminData?.id;
+  const token = adminData?.token;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const initializeSocket = useCallback(() => {
+    if (!userId || !token) return;
+
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+    }
+
+    socketRef.current = io("http://localhost:5000", {
+      transports: ["websocket"],
+      auth: { token },
+    });
+
+    socketRef.current.on("connect", () => {
+      setSocketConnected(true);
+      socketRef.current?.emit("join_user_room", userId);
+    });
+
+    socketRef.current.on("new_message", (message: ChatMessage) => {
+      const conversationId = message.conversationId;
+      const isCurrentConversation = selectedCoordinator && 
+        conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
+      
+      if (!isCurrentConversation) {
+        setUnreadConversations(prev => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || 0) + 1
+        }));
+      }
+      setMessages(prev => [...prev, formatMessage(message)]);
+    });
+
+    socketRef.current.on("message_read", ({ conversationId }) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.conversationId === conversationId && msg.receiverId === userId
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+    });
+
+  socketRef.current.on("user_status_update", (update: { userId: string; status: string }) => {
+  setCoordinators(prev => prev.map(coordinator => 
+    coordinator.employeeId === update.userId
+      ? { 
+          ...coordinator, 
+          status: 
+            update.status === "available" || update.status === "busy" || update.status === "offline"
+              ? update.status
+              : "offline"
+        }
+      : coordinator
+  ));
+    });
+
+socketRef.current.on("message_delivered", ({ messageId }) => {
+  setMessages(prev =>
+    prev.map(msg =>
+      msg.id === messageId ? { ...msg, isDelivered: true } : msg
+    )
+  );
+});
+
+socketRef.current.on("message_read", ({ messageId }) => {
+  setMessages(prev =>
+    prev.map(msg =>
+      msg.id === messageId ? { ...msg, isRead: true } : msg
+    )
+  );
+});
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [userId, token, selectedCoordinator]);
+
+  useEffect(() => {
+    initializeSocket();
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, [initializeSocket]);
+   useEffect(() => {
+const loadData = async () => {
+  try {
+    setLoading(true);
+    const response = await fetchEmployees(1, 10);
+    const employees = response.data.employees || [];
+    const coordinatorsWithMessages = await Promise.all(
+      employees
+        .filter((e: any) => e.position?.toLowerCase() === "coordinator")
+        .map(async (e: any) => {
+          const history = await ChatService.getChatHistory(
+            userId!,
+            e.id
+          );
+          const lastMessage = history.length > 0 
+            ? history[history.length - 1] 
+            : null;
+          
+          return {
+            id: e.id,
+            name: e.employeeName,
+            avatar: e.employeeName?.slice(0, 2).toUpperCase() || "CO",
+            status: e.status || "offline",
+            lastMessage: lastMessage?.text || "No messages yet",
+            time: lastMessage 
+              ? new Date(lastMessage.time).toLocaleTimeString([], { 
+                  hour: "2-digit", 
+                  minute: "2-digit" 
+                })
+              : "",
+            employeeId: e.id,
+            role: "coordinator"
+          };
+        })
+    );
+
+    setCoordinators(coordinatorsWithMessages);
+  } catch (error) {
+    console.error("Error loading data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+    if (userId) loadData();
+  }, [userId]);
+
+  // Fetch chat history when a coordinator is selected
+  const loadChatHistory = useCallback(async () => {
+    if (!selectedCoordinator || !userId) return;
+
+    try {
+      const history = await ChatService.getChatHistory(
+        userId,
+        selectedCoordinator.employeeId
+      );
+      setMessages(history.map(formatMessage));
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+    }
+  }, [selectedCoordinator, userId]);
+
+  useEffect(() => {
+    loadChatHistory();
+  }, [loadChatHistory]);
+
+  // Scroll to the latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+   const handleSelectCoordinator = async (coordinator: Coordinator) => {
+    setSelectedCoordinator(coordinator);
+    
+    if (userId && coordinator.employeeId) {
+      const conversationId = [userId, coordinator.employeeId].sort().join('_');
+      
+      // Mark messages as read
+      await ChatService.markMessagesAsRead(conversationId, userId);
+      
+      // Clear unread count
+      setUnreadConversations(prev => ({
+        ...prev,
+        [conversationId]: 0
+      }));
+      
+      // Load chat history
+      const history = await ChatService.getChatHistory(userId, coordinator.employeeId);
+      setMessages(history.map(formatMessage));
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedCoordinator || !userId) return;
+
+    const messageText = newMessage.trim();
+    const conversationId = [userId, selectedCoordinator.employeeId].sort().join('_');
+     setUnreadConversations(prev => {
+    const updated = {...prev};
+    delete updated[conversationId];
+    return updated;
+    });
+    
+    await ChatService.markMessagesAsRead(conversationId, userId);
+
+    if (socketRef.current) {
+    socketRef.current.emit('mark_all_chat_notifications_read', { userId });
+     }
+    const tempMessage: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: userId,
+      receiverId: selectedCoordinator.employeeId,
+      text: messageText,
+      time: new Date().toISOString(),
+      isDelivered: false,
+      isRead: false,
+      messageType: determineMessageType(messageText),
+      conversationId,
+      senderRole : "admin",
+      receiverRole :"coordinator"
+    };
+
+    try {
+      setNewMessage("");
+      setMessages(prev => [...prev, formatMessage(tempMessage)]);
+
+      const savedMessage = await ChatService.sendMessage(tempMessage);
+      
+      // Update with server response
+       if (socketRef.current) {
+      socketRef.current.emit("send_message", savedMessage, (deliveryConfirmation: any) => {
+        if (deliveryConfirmation?.success) {
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === tempMessage.id 
+                ? { ...msg, id: savedMessage.id, isDelivered: true }
+                : msg
+            )
+          );
+        }
+      });
+    }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+    }
+  };
+
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+
+    if (socketRef.current && socketConnected && selectedCoordinator) {
+      socketRef.current.emit("typing", {
+        conversationId: [userId, selectedCoordinator.employeeId]
+          .sort()
+          .join("_"),
+        userId,
+      });
+    }
+  };
+
+  const filteredCoordinators = coordinators.filter(
+    (coordinator) =>
+      coordinator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coordinator.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "available":
+        return "bg-green-500";
+      case "busy":
+        return "bg-yellow-500";
+      case "offline":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  const getMessageTypeStyle = (messageType?: string) => {
+    switch (messageType) {
+      case "urgent":
+        return "border-l-4 border-red-500 bg-red-50";
+      case "task":
+        return "border-l-4 border-blue-500 bg-blue-50";
+      default:
+        return "";
+    }
+  };
+
+     return (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh)]">
+      {/* Connection Status Indicator */}
+      <div
+        className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${
+          socketConnected
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+        }`}
+      >
+        {socketConnected ? "🟢 Connected" : "🔴 Disconnected"}
+      </div>
+      {!selectedCoordinator ? (
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Chat with Coordinators
+              </h2>
+              <div className="flex items-center space-x-2">
+                <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
+                  {
+                    filteredCoordinators.filter((c) => c.status === "available")
+                      .length
+                  }{" "}
+                  Available
+                </div>
+              </div>
+            </div>
+            {/* Search */}
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Search coordinators..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Coordinators List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {loading && page === 1 ? (
+              <div className="flex justify-center items-center h-20">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : filteredCoordinators.length === 0 ? (
+              <div className="text-center text-gray-500 py-10">
+                No coordinators found
+              </div>
+            ) : (
+              filteredCoordinators.map((coordinator) => (
+                <div
+                  key={coordinator.id}
+                  className="group relative bg-white/70 backdrop-blur-sm hover:bg-white/90 rounded-xl p-4 cursor-pointer transform hover:scale-[1.02] transition-all duration-200 shadow-sm hover:shadow-md border border-white/50"
+                  onClick={() => handleSelectCoordinator(coordinator)}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                        <span className="text-white font-semibold text-lg">
+                          {coordinator.avatar}
+                        </span>
+                      </div>
+                      <div
+                        className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(
+                          coordinator.status
+                        )} rounded-full border-2 border-white`}
+                      ></div>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-800 truncate">
+                            {coordinator.name}
+                          </h3>
+                          <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500 mt-1">
+                            <div className="flex items-center">
+                              <Users size={12} className="mr-1" />
+                              <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                                Coordinator
+                              </span>
+                            </div>
+                            <span>{coordinator.employeeId}</span>
+                          </div>
+                          <p className="text-sm text-gray-600 truncate mt-1">
+                            {coordinator.lastMessage}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end space-y-1 ml-2">
+                          <span className="text-xs text-gray-500">
+                            {coordinator.time}
+                          </span>
+                          {unreadConversations[[userId, coordinator.employeeId].sort().join('_')] > 0 && (
+                          <div className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {unreadConversations[[userId, coordinator.employeeId].sort().join('_')]}
+                          </div>
+                        )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="h-full flex flex-col">
+          {/* Chat Header */}
+          <div className="bg-white/90 backdrop-blur-sm border-b border-blue-100 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setSelectedCoordinator(null)}
+                  className="p-2 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  <ChevronLeft size={20} className="text-gray-600" />
+                </button>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <span className="text-white font-medium">
+                        {selectedCoordinator.avatar}
+                      </span>
+                    </div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-3 h-3 ${getStatusColor(
+                        selectedCoordinator.status
+                      )} rounded-full border-2 border-white`}
+                    ></div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-semibold text-gray-800">
+                      {selectedCoordinator.name}
+                    </h3>
+                    <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500">
+                      <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                        Coordinator
+                      </span>
+                      <span>{selectedCoordinator.employeeId}</span>
+                      <span>•</span>
+                      <span className="capitalize">
+                        {selectedCoordinator.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <button className="p-2 rounded-full hover:bg-blue-100 transition-colors">
+                  <MoreVertical size={18} className="text-gray-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Messages Container */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-blue-50/50 to-indigo-50/30">
+            {messages.map((message, index) => (
+              <div
+                key={`${message.id}-${index}`}
+                className={`flex ${
+                  message.senderId === userId ? "justify-end" : "justify-start"
+                }`}
+              >
+               <div className="max-w-xs lg:max-w-md">
+                {message.senderId !== userId && (
+                <div className="text-xs text-gray-500 mb-1 ml-1">
+                  {selectedCoordinator?.name}
+                </div>
+                 )}
+
+                <div
+                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
+                    message.senderId === userId
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md"
+                      : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(
+                          message.messageType
+                        )}`
+                  }`}
+                >
+                  <p className="break-words">{message.text}</p>
+                  <div
+                    className={`flex items-center justify-between mt-2 text-xs ${
+                      message.senderId === userId
+                        ? "text-blue-100"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    <span>{message.time}</span>
+                        {message.senderId === userId && (
+                          <div className="flex items-center ml-2 space-x-0.5">
+                            {!message.isDelivered ? (
+                              <>
+                                <CheckCheck size={14} className="text-red-500" />
+                                <CheckCheck size={14} className="text-red-500 -ml-1" />
+                              </>
+                            ) : message.isRead ? (
+                              <>
+                                <CheckCheck size={14} className="text-green-500" />
+                                <CheckCheck size={14} className="text-green-500 -ml-1" />
+                              </>
+                            ) : (
+                              <>
+                                <CheckCheck size={14} className="text-gray-500" />
+                                <CheckCheck size={14} className="text-gray-500 -ml-1" />
+                              </>
+                            )}
+                          </div>
+                        )}
+                  </div>
+                </div>
+                </div>
+              </div>
+            ))}
+
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-gray-100">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Message Input - Fixed Bottom Alignment */}
+          <div className="bg-white/90 backdrop-blur-sm border-t border-blue-100 p-4 mt-auto">
+            <div className="flex items-end space-x-3">
+              <button className="p-2 rounded-full hover:bg-blue-100 transition-colors mb-1 flex-shrink-0">
+                <Paperclip size={20} className="text-gray-500" />
+              </button>
+              
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={
+                    socketConnected ? "Type your message..." : "Connecting..."
+                  }
+                  disabled={!socketConnected}
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-50 resize-none"
+                />
+                <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                  <Smile size={18} className="text-gray-500" />
+                </button>
+              </div>
+              
+              <button
+                onClick={handleSendMessage}
+                disabled={!newMessage.trim() || !socketConnected}
+                className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg flex-shrink-0"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminCoordinatorChat;
