@@ -2,20 +2,22 @@ import { Navigate, RouteObject } from 'react-router-dom';
 import Home from '../pages/Home';
 import publicRoutes from './publicRouter';
 import adminRoutes from './AdminRouters';
+import employeeRoutes from './EmployeeRouter'; 
 import NotFound from '../pages/NotFound';
-import employeeRoutes from './EmployeeRouter';
+import mechanicRoutes from './mechanicRouter';
 
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...adminRoutes,
-  ...employeeRoutes,
+  ...employeeRoutes, 
+  ...mechanicRoutes,
   {
     path: '/',
     element: <Home />,
   },
   {
-    path: '/',
-    element: <Navigate to="/home" replace />,
+    path: '/home',
+    element: <Navigate to="/" replace />,
   },
   {
     path: '*',

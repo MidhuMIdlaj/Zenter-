@@ -5,6 +5,7 @@ import { Box, Button, CircularProgress, Container, Paper, Typography } from '@mu
 import { styled } from '@mui/system';
 import { useSelector } from 'react-redux';
 import { selectAdminAuthData, selectEmployeeAuthData } from '../../store/selectors';
+import { VideoCallService } from '../../api/VideoCall/videoCallService';
 
 const StyledContainer = styled(Container)({
   display: 'flex',
@@ -27,13 +28,15 @@ const MeetingInfoCard = styled(Paper)({
 export default function VideoCallJoinPage() {
   const [params] = useSearchParams();
   const roomID = params.get('roomID');
+  const fallbackEmployeeId = params.get('employeeId'); // 👈 fallback for email links
   const navigate = useNavigate();
+
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const { adminData } = useSelector(selectAdminAuthData);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  
   const getDashboardPath = () => {
     if (adminData?.id) {
       return '/admin/dashboard';
@@ -51,23 +54,69 @@ export default function VideoCallJoinPage() {
     }
   };
 
+  const updateCallParticipant = async () => {
+    try {
+      if (!roomID) return;
+
+      const employeeId = employeeData?.id || fallbackEmployeeId;
+      const employeeName = employeeData?.employeeName || 'Unknown Employee';
+      if (!employeeId) return;
+
+      const participant = {
+        employeeId,
+        employeeName,
+        joinedAt: new Date().toISOString(),
+      };
+
+      await VideoCallService.updateParticipants(roomID, [participant]);
+      console.log(`[VideoCallJoinPage] Participant joined: ${employeeId}`);
+    } catch (err) {
+      console.error('[VideoCallJoinPage] Failed to update participant join time:', err);
+    }
+  };
+
+  const updateLeftTime = async () => {
+    try {
+      if (!roomID) return;
+
+      
+      const employeeName = employeeData?.employeeName || 'Unknown Employee';
+      const employeeId = employeeData?.id || fallbackEmployeeId;
+      if (!employeeId) return;
+
+      const participant = {
+        employeeId,
+        employeeName,
+        leftAt: new Date().toISOString(),
+      };
+
+      await VideoCallService.updateParticipants(roomID, [participant]);
+      console.log(`[VideoCallJoinPage] Participant left: ${employeeId}`);
+    } catch (err) {
+      console.error('[VideoCallJoinPage] Failed to update participant leave time:', err);
+    }
+  };
+
+  const handleCallEnd = async () => {
+    await updateLeftTime();
+
+    const dashboardPath = getDashboardPath();
+    console.log(`[VideoCallJoinPage] Call ended, redirecting to: ${dashboardPath}`);
+    navigate(dashboardPath);
+  };
+
   useEffect(() => {
-    // Simulate loading (replace with actual checks)
     const timer = setTimeout(() => {
       if (!roomID) {
         setError('Invalid meeting link. Please check your invitation.');
+      } else {
+        updateCallParticipant();
       }
       setLoading(false);
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [roomID]);
-
- const handleCallEnd = () => {
-    const dashboardPath = getDashboardPath();
-    console.log(`[VideoCallJoinPage] Call ended, redirecting to: ${dashboardPath}`);
-    navigate(dashboardPath);
-  };
+  }, [roomID, employeeData, fallbackEmployeeId]);
 
   if (loading) {
     return (
@@ -90,12 +139,7 @@ export default function VideoCallJoinPage() {
           <Typography variant="body1" paragraph>
             {error}
           </Typography>
-          <Button 
-            variant="contained" 
-            color="primary"
-            href="/"
-            sx={{ mt: 2 }}
-          >
+          <Button variant="contained" color="primary" href="/" sx={{ mt: 2 }}>
             Return to Home
           </Button>
         </MeetingInfoCard>
@@ -105,7 +149,7 @@ export default function VideoCallJoinPage() {
 
   return (
     <Box sx={{ height: '100vh', width: '100vw' }}>
-      <VideoCall 
+      <VideoCall
         appID={1855333231}
         serverSecret="947a8b673c02869dd8f075fcb5435889"
         roomID={roomID || ''}

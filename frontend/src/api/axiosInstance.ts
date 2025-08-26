@@ -1,87 +1,66 @@
-// // src/api/adminAxiosInstance.ts
-// import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import { store } from '../store/Store';
+import { clearAdminAuth } from '../store/AdminAuthSlice';
+import { clearEmployeeAuth } from '../store/EmployeeAuthSlice';
 
-// const baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000';
+const axiosInstance = axios.create({
+  baseURL: `${import.meta.env.VITE_API_BASE_URL}`,
+  withCredentials: true,
+});
 
-// let adminAuthToken: string | null = localStorage.getItem('adminAuthToken');
-// let adminRefreshToken: string | null = localStorage.getItem('adminRefreshToken');
+axiosInstance.interceptors.request.use((config) => {
+  // Get token from localStorage or Redux store
+  const employeeData = JSON.parse(localStorage.getItem('employeeData') || '{}');
+  const token = employeeData.token || localStorage.getItem('token');
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  
+  return config;
+});
 
-// interface RetryableAxiosRequestConfig extends InternalAxiosRequestConfig {
-//   _retry?: boolean;
-// }
+axiosInstance.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_BASE_URL}/admin/refresh-token`,
+          {},
+          { withCredentials: true }
+        ); 
+        
+        const newToken = response.data.accessToken;
+        const employeeData = JSON.parse(localStorage.getItem('employeeData') || '{}');
+        employeeData.token = newToken;
+        localStorage.setItem('employeeData', JSON.stringify(employeeData));
+        
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        store.dispatch(clearAdminAuth());
+        localStorage.removeItem('employeeData');
+        localStorage.removeItem('token');
+        window.location.href = '/admin/login';
+        return Promise.reject(refreshError);
+      }
+    }
 
-// interface TokenResponse {
-//   token: string;
-//   refreshToken: string;
-// }
+     if (error.response?.status === 403 && error.response.data?.shouldLogout) {
+      store.dispatch(clearEmployeeAuth());
+      localStorage.removeItem('employeeData');
+      localStorage.removeItem('token');
+      window.location.href = '/employee-login'; 
+      return Promise.reject(error);
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
-// const adminApi: AxiosInstance = axios.create({
-//   baseURL,
-//   withCredentials: true,
-//   headers: {
-//     'Content-Type': 'application/json',
-//   },
-// });
-
-// adminApi.interceptors.request.use((config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-//   const newConfig = { ...config };
-//   if (adminAuthToken) {
-//     newConfig.headers = newConfig.headers || {};
-//     newConfig.headers.Authorization = `Bearer ${adminAuthToken}`;
-//   }
-//   return newConfig;
-// });
-
-// adminApi.interceptors.response.use(
-//   (response: AxiosResponse) => response,
-//   async (error: AxiosError) => {
-//     const originalRequest = error.config as RetryableAxiosRequestConfig;
-
-//     if (error.response?.status === 401 && adminRefreshToken && !originalRequest._retry) {
-//       originalRequest._retry = true;
-
-//       try {
-//         const response = await axios.post<TokenResponse>(`${baseURL}/admin/refresh-token`, {
-//           refreshToken: adminRefreshToken,
-//         });
-
-//         const { token, refreshToken: newRefreshToken } = response.data;
-
-//         // Store new tokens
-//         localStorage.setItem('adminAuthToken', token);
-//         localStorage.setItem('adminRefreshToken', newRefreshToken);
-//         adminAuthToken = token;
-//         adminRefreshToken = newRefreshToken;
-
-//         // Retry original request
-//         if (originalRequest.headers) {
-//           originalRequest.headers.Authorization = `Bearer ${token}`;
-//         }
-//         return adminApi(originalRequest);
-//       } catch (refreshError) {
-//         localStorage.removeItem('adminAuthToken');
-//         localStorage.removeItem('adminRefreshToken');
-//         window.location.href = '/admin/login';
-//         return Promise.reject(refreshError);
-//       }
-//     }
-
-//     return Promise.reject(error);
-//   }
-// );
-
-// export const updateAdminAuthTokens = (token: string, newRefreshToken: string): void => {
-//   adminAuthToken = token;
-//   adminRefreshToken = newRefreshToken;
-//   localStorage.setItem('adminAuthToken', token);
-//   localStorage.setItem('adminRefreshToken', newRefreshToken);
-// };
-
-// export const clearAdminAuthTokens = (): void => {
-//   adminAuthToken = null;
-//   adminRefreshToken = null;
-//   localStorage.removeItem('adminAuthToken');
-//   localStorage.removeItem('adminRefreshToken');
-// };
-
-// export default adminApi;
+export default axiosInstance;

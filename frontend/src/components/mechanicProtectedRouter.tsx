@@ -16,7 +16,6 @@ const MechanicProtectedRoute = () => {
   if (employeeData?.position !== 'mechanic') {
     return <Navigate to="/unauthorized" replace />;
   }
-  
   return <Outlet />;
 };
 

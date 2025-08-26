@@ -70,12 +70,11 @@ const EmployeeLogin: React.FC = () => {
       (async () => {
         try {
           const response = await EmployeeLoginApi(email, password);
-          
           if (response.status === 200 && response.data) {
-              const { token, emailId, position } = response.data    
-            dispatch(setEmployeeAuth({token, emailId}));
+              const { token, id, position, employeeName } = response.data    
+            dispatch(setEmployeeAuth({token, id, position, employeeName }));
             console.log("Login successful:", position);
-    
+            
             if (position === "mechanic") {
               navigate('/mechanic/dashboard');
             } else if (position === "coordinator") {

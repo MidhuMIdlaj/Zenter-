@@ -8,9 +8,7 @@ interface Complaint {
   customerEmail: string;
   customerPhone: string;
   createdAt: string;
-  status: {
-    workingStatus: string;
-  };
+  workingStatus: string;
 }
 
 interface UserComplaintStats {
@@ -26,8 +24,24 @@ interface UserComplaintStats {
   };
 }
 
-export default function ComplaintLeadersCard() {
-  const [topComplainers, setTopComplainers] = useState<UserComplaintStats[]>([]);
+interface TopComplainer {
+  name: string;
+  email: string;
+  complaintCount: number;
+  lastComplaintDate: string;
+  statusDistribution: {
+    completed: number;
+    processing: number;
+    pending: number;
+  };
+}
+
+interface ComplaintLeadersCardProps {
+  setTopComplainers: (complainers: TopComplainer[]) => void;
+}
+
+export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLeadersCardProps) {
+  const [topComplainers, setTopComplainersLocal] = useState<UserComplaintStats[]>([]);
   const [bottomComplainers, setBottomComplainers] = useState<UserComplaintStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +56,7 @@ export default function ComplaintLeadersCard() {
           return;
         }
 
-        // Group complaints by customer
+        // Group complaints by customer email (unique identifier)
         const userComplaintsMap = new Map<string, UserComplaintStats>();
 
         complaints.forEach(complaint => {
@@ -55,7 +69,7 @@ export default function ComplaintLeadersCard() {
               email,
               phone: complaint.customerPhone || '',
               complaintCount: 0,
-              lastComplaintDate: '',
+              lastComplaintDate: complaint.createdAt,
               statusDistribution: {
                 completed: 0,
                 processing: 0,
@@ -67,36 +81,75 @@ export default function ComplaintLeadersCard() {
           const userStats = userComplaintsMap.get(email)!;
           userStats.complaintCount += 1;
           
-          // Update last complaint date
+          // Update last complaint date if newer
           const complaintDate = new Date(complaint.createdAt);
-          if (!userStats.lastComplaintDate || complaintDate > new Date(userStats.lastComplaintDate)) {
+          const lastDate = new Date(userStats.lastComplaintDate);
+          if (complaintDate > lastDate) {
             userStats.lastComplaintDate = complaint.createdAt;
           }
           
           // Update status distribution
-          if (complaint.workingStatus === 'completed') {
-            userStats.statusDistribution.completed += 1;
-          } else if (complaint.workingStatus === 'processing') {
-            userStats.statusDistribution.processing += 1;
-          } else {
-            userStats.statusDistribution.pending += 1;
+          switch(complaint.workingStatus) {
+            case 'completed':
+              userStats.statusDistribution.completed += 1;
+              break;
+            case 'processing':
+              userStats.statusDistribution.processing += 1;
+              break;
+            default:
+              userStats.statusDistribution.pending += 1;
           }
         });
 
-        // Convert to array and sort by complaint count
-        const userStatsArray = Array.from(userComplaintsMap.values());
-        userStatsArray.sort((a, b) => b.complaintCount - a.complaintCount);
+        // Convert to array and filter out users with 0 complaints
+        let userStatsArray = Array.from(userComplaintsMap.values())
+          .filter(user => user.complaintCount > 0);
 
-        // Get top 3 complainers
-        setTopComplainers(userStatsArray.slice(0, 3));
-        
-        // Get bottom complainers (only those with at least one complaint)
-        const filteredBottom = userStatsArray
-          .filter(user => user.complaintCount > 0)
-          .sort((a, b) => a.complaintCount - b.complaintCount)
-          .slice(0, 3);
-        
-        setBottomComplainers(filteredBottom);
+        // If there are less than 6 unique complainers, we can't show 3 top and 3 bottom without overlap
+        if (userStatsArray.length < 6) {
+          // Just show all complainers in top section and nothing in bottom
+          const sortedDesc = [...userStatsArray].sort((a, b) => b.complaintCount - a.complaintCount);
+          setTopComplainersLocal(sortedDesc.slice(0, 3));
+          setBottomComplainers([]);
+          
+          // Update parent component with top complainers
+          if (setTopComplainers) {
+            setTopComplainers(sortedDesc.slice(0, 3).map(user => ({
+              name: user.name,
+              email: user.email,
+              complaintCount: user.complaintCount,
+              lastComplaintDate: user.lastComplaintDate,
+              statusDistribution: user.statusDistribution
+            })));
+          }
+        } else {
+          // Sort by complaint count (descending for top, ascending for bottom)
+          const sortedDesc = [...userStatsArray].sort((a, b) => b.complaintCount - a.complaintCount);
+          const sortedAsc = [...userStatsArray].sort((a, b) => a.complaintCount - b.complaintCount);
+
+          // Get top 3 and bottom 3, ensuring no overlap
+          const top3 = sortedDesc.slice(0, 3);
+          // Filter out top 3 from the ascending sort to prevent duplicates
+          const bottomCandidates = sortedAsc.filter(user => 
+            !top3.some(topUser => topUser.email === user.email)
+          );
+          const bottom3 = bottomCandidates.slice(0, 3);
+
+          setTopComplainersLocal(top3);
+          setBottomComplainers(bottom3);
+          
+          // Update parent component with top complainers
+          if (setTopComplainers) {
+            setTopComplainers(top3.map(user => ({
+              name: user.name,
+              email: user.email,
+              complaintCount: user.complaintCount,
+              lastComplaintDate: user.lastComplaintDate,
+              statusDistribution: user.statusDistribution
+            })));
+          }
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching complaints:', error);
@@ -106,7 +159,7 @@ export default function ComplaintLeadersCard() {
     };
 
     fetchComplaints();
-  }, []);
+  }, [setTopComplainers]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -123,7 +176,6 @@ export default function ComplaintLeadersCard() {
     return Math.round((user.statusDistribution[status] / user.complaintCount) * 100);
   };
 
-  
   return (
     <div className="bg-white rounded-lg shadow-md p-6 h-full">
       <div className="flex items-center justify-between mb-6">
@@ -146,7 +198,7 @@ export default function ComplaintLeadersCard() {
           <div>
             <div className="flex items-center mb-4">
               <TrendingUp className="text-green-500 mr-2" size={18} />
-              <h4 className="font-medium text-gray-700">Most Active Complainers</h4>
+              <h4 className="font-medium text-gray-700">Top Complainers (Most Complaints)</h4>
             </div>
             
             {topComplainers.length > 0 ? (
@@ -168,13 +220,12 @@ export default function ComplaintLeadersCard() {
           </div>
           
           {/* Bottom Complainers Section */}
-          <div>
-            <div className="flex items-center mb-4">
-              <TrendingDown className="text-red-500 mr-2" size={18} />
-              <h4 className="font-medium text-gray-700">Least Active Complainers</h4>
-            </div>
-            
-            {bottomComplainers.length > 0 ? (
+          {bottomComplainers.length > 0 && (
+            <div>
+              <div className="flex items-center mb-4">
+                <TrendingDown className="text-red-500 mr-2" size={18} />
+                <h4 className="font-medium text-gray-700">Bottom Complainers (Least Complaints)</h4>
+              </div>
               <div className="space-y-4">
                 {bottomComplainers.map((user, index) => (
                   <UserComplaintItem 
@@ -187,17 +238,14 @@ export default function ComplaintLeadersCard() {
                   />
                 ))}
               </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No data available</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-// Extracted User Complaint Item component for better reusability
 function UserComplaintItem({ user, index, isTop, formatDate, getStatusPercentage }: {
   user: UserComplaintStats;
   index: number;

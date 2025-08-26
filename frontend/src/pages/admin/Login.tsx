@@ -1,6 +1,6 @@
 import React, { useState, FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { FiSun, FiBattery, FiLock, FiMail } from 'react-icons/fi';
+import { FiSun, FiBattery, FiLock, FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
 import { AdminLoginApi } from '../../api/admin/auth';
 import {  useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate()
   const dispatch = useDispatch();
-
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -23,19 +23,15 @@ const Login: React.FC = () => {
     setError(null);
     
     try {
-      console.log("Login function called with email:", email, password);
-      const response = await AdminLoginApi(email, password);
-      console.log(response, "response h");
-      
-      if(response.status == 401){
+      const res = await AdminLoginApi(email, password);
+      const response = res.data
+      if(res.status == 401){
         setError("Invalid credentials. Please try again.");
         return;
       }
-      if (response.status === 200) {
-        console.log("Login successful:", response);
-        const { token , email } = response.data;
-        dispatch(setAdminAuth({ token, email }));
-        console.log("Login successful, token:", token, "user:", email);
+      if (res.status === 200) {
+        const { accessToken, email, id } = response.data;
+        dispatch(setAdminAuth({ email, id, token: accessToken }));
         navigate('/admin/dashboard');
       } else {
         setError('Login failed. Please try again.');
@@ -128,13 +124,25 @@ const Login: React.FC = () => {
                 <FiLock className="text-gray-400" />
               </div>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 value={password}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <FiEyeOff className="text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <FiEye className="text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
             </div>
           </div>
 

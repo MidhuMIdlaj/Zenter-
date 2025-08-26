@@ -19,7 +19,10 @@ interface EmployeeFormProps {
   isSubmitting: boolean;
   submitSuccess: boolean;
   submitError: string | null;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+   handleInputChange: {
+    (name: string, value: any): void; 
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void; // For event handlers
+  };
   handleSubmit: (e: React.FormEvent) => void;
   resetForm: () => void;
   onClose: () => void
@@ -300,25 +303,69 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
               </div>
             </div>
 
-            <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Field of Mechanic
-            </label>
-            <div className="relative">
-              <select
-                name="fieldOfMechanic"
-                value={formData.fieldOfMechanic}
-                onChange={handleInputChange}
-                className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
-              >
-                <option value="">Select a field</option>
-                <option value="Battery">Battery</option>
-                <option value="Invertor">Invertor</option>
-                <option value="Solar">Solar</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Field of Mechanic
+              </label>
+              
+              {/* Selected chips */}
+              {formData.fieldOfMechanic?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {formData.fieldOfMechanic.map((field) => (
+                    <span 
+                      key={field}
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                    >
+                      {field}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleInputChange(
+                            "fieldOfMechanic", 
+                            formData.fieldOfMechanic.filter(f => f !== field)
+                          );
+                        }}
+                        className="ml-1.5 inline-flex items-center justify-center w-3 h-3 text-blue-600 hover:text-blue-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              <div className="relative">
+                <select
+                  name="fieldOfMechanic"
+                  multiple
+                  value={formData.fieldOfMechanic}
+                  onChange={(e) => {
+                    const options = e.target.options;
+                    const selectedValues: string[] = [];
+                    for (let i = 0; i < options.length; i++) {
+                      if (options[i].selected) {
+                        selectedValues.push(options[i].value);
+                      }
+                    }
+                    handleInputChange("fieldOfMechanic", selectedValues);
+                  }}
+                  className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none h-auto min-h-[42px]"
+                  size={3}
+                >
+                  {["Battery", "Invertor", "Solar"].map(option => (
+                    <option 
+                      key={option} 
+                      value={option}
+                    >
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              </div>
             </div>
-          </div>
           </div>
         </div>
 

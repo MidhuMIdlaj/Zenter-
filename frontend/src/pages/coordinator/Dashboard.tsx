@@ -1,273 +1,418 @@
+// Dashboard.jsx
 import { useState, useEffect } from 'react';
-import { Bell, MessageSquare, Home, Users, FileText, ShoppingCart, Settings, CreditCard, Send,  LogOut } from 'lucide-react';
-import { clearEmployeeAuth } from '../../store/EmployeeAuthSlice';
-import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Users, ShoppingCart, CreditCard, Calendar } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { format } from 'date-fns'
+// Import components
+import StatCard from '../../components/coordinator/stateCard';
+import ComplaintChart from '../../components/coordinator/ComplaintChart';
+import ComplaintPieChart from '../../components/coordinator/pieChart';
+// import LocationMap from '../../components/coordinator/locationMap';
+
+// Import chart data
+// import { attendanceData } from '../../components/coordinator/ChartData';
+import { getAllComplaint } from '../../api/cplaint/complaint';
+import UserStatsChart from '../../components/coordinator/UserStatsChart';
+import ComplaintLeadersCard from './UserLocationMap';
+import CoordinatorInvoiceGenerator from '../../components/coordinator/CoordinatorInvoiceGenerator';
+import { ClientListApi } from '../../api/admin/Client';
+
+interface UserStats {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  newUsers: number;
+}
+
+interface TopComplainer {
+  name: string;
+  email: string;
+  complaintCount: number;
+  lastComplaintDate: string;
+  statusDistribution: {
+    completed: number;
+    processing: number;
+    pending: number;
+  };
+}
+
 
 export default function Dashboard() {
-    console.log('Dashboard component rendered');
-  const [activeTab, setActiveTab] = useState('Dashboard');
-  const [checkedIn, setCheckedIn] = useState(false);
+  const [totalComplaint, setTotalComplaint] = useState(0);
+  const [completedComplaint, setCompletedComplaint] = useState(0);
+  const [pendingComplaint, setPendingComplaint] = useState(0);
+  const [processingComplaint, setProcessingComplaint] = useState(0);
   const [animateCards, setAnimateCards] = useState(false);
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
+  type ComplaintChartItem = {
+    month: string;
+    completed: number;
+    pending: number;
+    processing: number;
+    total: number;
+  };
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    newUsers: 0
+  });
+   const [topComplainers, setTopComplainers] = useState<TopComplainer[]>([]);
+  const [complaintChartData, setComplaintChartData] = useState<ComplaintChartItem[]>([]);
+  type PieChartDataItem = { name: string; value: number; color: string };
+  const [pieChartData, setPieChartData] = useState<PieChartDataItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<Date | null>(null);
+  const [allComplaints, setAllComplaints] = useState<any[]>([]);
+  const [filteredComplaints, setFilteredComplaints] = useState<any[]>([]);
+
+
+  const calculateTopComplainers = (complaints: any[]): TopComplainer[] => {
+  const complainersMap: Record<string, TopComplainer> = {};
+
+  complaints.forEach(complaint => {
+    if (!complaint.user) return;
+    
+    const userId = complaint.user._id;
+    if (!complainersMap[userId]) {
+      complainersMap[userId] = {
+        name: complaint.user.name || 'Unknown',
+        email: complaint.user.email || 'No email',
+        complaintCount: 0,
+        lastComplaintDate: complaint.createdAt,
+        statusDistribution: {
+          completed: 0,
+          processing: 0,
+          pending: 0
+        }
+      };
+    }
+
+    complainersMap[userId].complaintCount++;
+    if (new Date(complaint.createdAt) > new Date(complainersMap[userId].lastComplaintDate)) {
+      complainersMap[userId].lastComplaintDate = complaint.createdAt;
+    }
+
+    // Update status distribution
+    if (complaint.status === 'completed') {
+      complainersMap[userId].statusDistribution.completed++;
+    } else if (complaint.status === 'processing') {
+      complainersMap[userId].statusDistribution.processing++;
+    } else if (complaint.status === 'pending') {
+      complainersMap[userId].statusDistribution.pending++;
+    }
+  });
+
+  return Object.values(complainersMap)
+    .sort((a, b) => b.complaintCount - a.complaintCount)
+    .slice(0, 5); // Get top 5 complainers
+};
+
   useEffect(() => {
-    // Trigger animation after component mounts
     setAnimateCards(true);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-fade-in');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    
+    document.querySelectorAll('.animate-on-scroll').forEach((el) => {
+      observer.observe(el);
+    });
+    
+    fetchComplaints();
+    
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
-  const handleLogout =async () => {
-    let res = await dispatch(clearEmployeeAuth());
-    console.log(res)
-    navigate('/employee-login')
-  }
+  useEffect(() => {
+    if (allComplaints.length > 0) {
+      applyFilters();
+    }
+  }, [selectedDate, selectedMonth, allComplaints]);
 
-  const tabs = [
-    { name: 'Dashboard', icon: <Home className="w-5 h-5" /> },
-    { name: 'Lead Management', icon: <FileText className="w-5 h-5" /> },
-    { name: 'User Management', icon: <Users className="w-5 h-5" /> },
-    { name: 'Our Product', icon: <ShoppingCart className="w-5 h-5" /> },
-    { name: 'Our Orders', icon: <FileText className="w-5 h-5" /> },
-    { name: 'Complaint Management', icon: <MessageSquare className="w-5 h-5" /> },
-    { name: 'Spare and Parts', icon: <Settings className="w-5 h-5" /> },
-    { name: 'Billing Page', icon: <CreditCard className="w-5 h-5" /> },
-    { name: 'Notification', icon: <Bell className="w-5 h-5" /> },
-    { name: 'Chat', icon: <MessageSquare className="w-5 h-5" /> },
-    { name: 'logout', icon: <LogOut className="w-5 h-5" /> , onclick : handleLogout},
-];
+  const fetchComplaints = async () => {
+  try {
+    const res = await getAllComplaint();
+    if (Array.isArray(res)) {
+      setAllComplaints(res);
+      setFilteredComplaints(res);
+      updateChartData(res);
+      setTopComplainers(calculateTopComplainers(res)); 
+    }
+  } catch (error) {
+    console.error('Error fetching complaints:', error);
+  }
+};
+
+  const applyFilters = () => {
+    let filtered = [...allComplaints];
+    
+    if (selectedMonth) {
+      filtered = filtered.filter(complaint => {
+        const complaintMonth = new Date(complaint.createdAt).getMonth();
+        return complaintMonth === selectedMonth.getMonth();
+      });
+    }
+    
+    if (selectedDate) {
+      filtered = filtered.filter(complaint => {
+        const complaintDate = new Date(complaint.createdAt);
+        return (
+          complaintDate.getDate() === selectedDate.getDate() &&
+          complaintDate.getMonth() === selectedDate.getMonth() &&
+          complaintDate.getFullYear() === selectedDate.getFullYear()
+        );
+      });
+    }
+    
+    setFilteredComplaints(filtered);
+    updateChartData(filtered);
+  };
+
+  const fetchUserStats = async () => {
+  try {
+    const res = await ClientListApi(); 
+    setUserStats({
+      totalUsers: res.totalUsers,
+      activeUsers: res.activeUsers,
+      inactiveUsers: res.inactiveUsers,
+      newUsers: res.newUsers
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+  }
+};
+
+useEffect(() => {
+  fetchUserStats();
+}, []);
+
+  const updateChartData = (complaints: any[]) => {
+    setTotalComplaint(complaints.length);
+    const completed = complaints.filter(c => c.status === 'completed').length;
+    setCompletedComplaint(completed);
+    const pending = complaints.filter(c => c.status === 'pending').length;
+    setPendingComplaint(pending);
+    const processing = complaints.filter(c => c.status === 'processing').length;
+    setProcessingComplaint(processing);
+
+    const chartData = transformComplaintData(complaints);
+    setComplaintChartData(chartData);
+    
+    setPieChartData([
+      { name: 'Solved', value: completed, color: '#9F7AEA' },
+      { name: 'Pending', value: pending, color: '#ED64A6' },
+      { name: 'Processing', value: processing, color: '#4299E1' }
+    ]);
+  };
+
+  const transformComplaintData = (complaints: any[]): ComplaintChartItem[] => {
+    const monthlyData: { [key: string]: ComplaintChartItem } = {};
+    
+    complaints.forEach(complaint => {
+      const date = new Date(complaint.createdAt);
+      const month = date.toLocaleString('default', { month: 'short' });
+      
+      if (!monthlyData[month]) {
+        monthlyData[month] = {
+          month,
+          completed: 0,
+          pending: 0,
+          processing: 0,
+          total: 0
+        };
+      }
+      
+      monthlyData[month].total++;
+      
+      switch(complaint.status) {
+        case 'completed':
+          monthlyData[month].completed++;
+          break;
+        case 'pending':
+          monthlyData[month].pending++;
+          break;
+        case 'processing':
+          monthlyData[month].processing++;
+          break;
+      }
+    });
+    
+    // Convert to array and sort by month
+    const monthsOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const result = Object.values(monthlyData).sort((a, b) => {
+      return monthsOrder.indexOf(a.month) - monthsOrder.indexOf(b.month);
+    });
+    
+    return result as ComplaintChartItem[];
+  };
+
+  const handleMonthChange = (date: Date | null) => {
+    setSelectedMonth(date);
+    setSelectedDate(null); // Clear date filter when month is selected
+  };
+
+  const handleDateChange = (date :  Date | null) => {
+    setSelectedDate(date);
+    setSelectedMonth(null); // Clear month filter when date is selected
+  };
+
+  const clearFilters = () => {
+    setSelectedDate(null);
+    setSelectedMonth(null);
+  };
+
+  const stats = [
+    { 
+      title: 'TOTAL COMPLAINTS', 
+      value: totalComplaint, 
+      changeText: 'All time', 
+      icon: <CreditCard className="w-6 h-6 text-indigo-500" />, 
+      color: 'indigo'
+    },
+    { 
+      title: 'COMPLETED COMPLAINTS', 
+      value: completedComplaint, 
+      changeText: `${Math.round((completedComplaint / totalComplaint) * 100) || 0}% resolved`, 
+      icon: <Users className="w-6 h-6 text-indigo-500" />, 
+      color: 'indigo' 
+    },
+    { 
+      title: 'PENDING COMPLAINTS', 
+      value: pendingComplaint, 
+      changeText: `${Math.round((pendingComplaint / totalComplaint) * 100) || 0}% pending`, 
+      icon: <MessageSquare className="w-6 h-6 text-indigo-500" />, 
+      color: 'indigo' 
+    },
+    { 
+      title: 'PROCESSING COMPLAINTS', 
+      value: processingComplaint, 
+      changeText: `${Math.round((processingComplaint / totalComplaint) * 100) || 0}% in progress`, 
+      icon: <ShoppingCart className="w-6 h-6 text-indigo-500" />, 
+      color: 'indigo' 
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Navigation Bar */}
-      <nav className="bg-indigo-900 text-white px-6 py-3 flex items-center justify-between">
-        <div className="flex space-x-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.name}
-              className={`flex items-center text-sm font-medium transition-all duration-300 hover:text-indigo-200 ${
-                activeTab === tab.name ? 'border-b-2 border-white' : ''
-              }`}
-              onClick={() => 
-                tab.name === 'logout' ? tab.onclick?.() :
-                setActiveTab(tab.name)
+    <>
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h1 className="text-2xl font-bold">Complaints Dashboard</h1>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-2">
+            <Calendar className="text-gray-500" />
+            <DatePicker
+              selected={selectedMonth}
+              onChange={handleMonthChange}
+              selectsStart
+              showMonthYearPicker
+              dateFormat="MMMM yyyy"
+              placeholderText="Filter by month"
+              className="border rounded-md px-3 py-2 text-sm w-full"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="text-gray-500" />
+            <DatePicker
+              selected={selectedDate}
+              onChange={handleDateChange}
+              dateFormat="MMMM d, yyyy"
+              placeholderText="Filter by date"
+              className="border rounded-md px-3 py-2 text-sm w-full"
+            />
+          </div>
+          {(selectedDate || selectedMonth) && (
+            <button 
+              onClick={clearFilters}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm"
+            >
+              Clear Filters
+            </button>
+          )}
+
+           <CoordinatorInvoiceGenerator 
+            complaints={filteredComplaints}
+            userStats={{
+              totalUsers: userStats.totalUsers,
+              activeUsers: userStats.activeUsers,
+              inactiveUsers: userStats.inactiveUsers,
+              newUsers: userStats.newUsers
+            }}
+            topComplainers={topComplainers} 
+            complaintTrends={complaintChartData}
+            selectedPeriod={
+              selectedDate 
+                ? format(selectedDate, 'MMMM d, yyyy') 
+                : selectedMonth 
+                  ? format(selectedMonth, 'MMMM yyyy') 
+                  : 'All Time'
             }
-            >
-              {tab.name}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Header with User Info and Attendance */}
-      <div className="bg-indigo-900 text-white px-8 py-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <div className="rounded-full bg-gray-200 w-12 h-12 flex items-center justify-center">
-              <img src="/api/placeholder/48/48" alt="User" className="rounded-full" />
-            </div>
-            <div>
-              <p className="text-xl font-semibold">Hi Arun (Coordinator)</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <p className="text-2xl font-bold">Mark Your Attendance :</p>
-            <button 
-              className={`bg-green-600 text-white px-4 py-2 rounded transition-all duration-300 ${!checkedIn ? 'hover:bg-green-700' : 'opacity-50 cursor-not-allowed'}`}
-              onClick={() => setCheckedIn(true)}
-              disabled={checkedIn}
-            >
-              Check In
-            </button>
-            <button 
-              className={`bg-red-600 text-white px-4 py-2 rounded transition-all duration-300 ${checkedIn ? 'hover:bg-red-700' : 'opacity-50 cursor-not-allowed'}`}
-              onClick={() => setCheckedIn(false)}
-              disabled={!checkedIn}
-            >
-              Check Out
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Home className="ml-2 w-6 h-6" />
+          />
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-8 py-6">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            { title: 'TOTAL MONEY', value: '$51,897', change: '+$4,487', changeText: 'Since last month', icon: 'money', color: 'blue' },
-            { title: 'USERS', value: '3,200', change: '+210', changeText: 'Since last month', icon: 'users', color: 'blue' },
-            { title: 'COMPLAINTS', value: '2,503', change: '-2.85%', changeText: 'Since last month', icon: 'complaints', color: 'blue' },
-            { title: 'TOTAL SALES', value: '173,000', change: '+5', changeText: 'per month', icon: 'sales', color: 'blue' }
-          ].map((stat, index) => (
-            <div 
-              key={stat.title}
-              className={`bg-white rounded-lg shadow-md p-6 transform transition-all duration-500 ${
-                animateCards ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-              }`}
-              style={{ transitionDelay: `${index * 100}ms` }}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm text-gray-500 font-medium">{stat.title}</p>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.change} {stat.changeText}</p>
-                </div>
-                <div className={`p-3 bg-${stat.color}-100 rounded-full`}>
-                  {stat.icon === 'money' && <CreditCard className="w-6 h-6 text-blue-500" />}
-                  {stat.icon === 'users' && <Users className="w-6 h-6 text-blue-500" />}
-                  {stat.icon === 'complaints' && <MessageSquare className="w-6 h-6 text-blue-500" />}
-                  {stat.icon === 'sales' && <ShoppingCart className="w-6 h-6 text-blue-500" />}
-                </div>
-              </div>
-            </div>
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {stats.map((stat, index) => (
+          <div 
+            key={stat.title}
+            className={`transform transition-all duration-500 ${
+              animateCards ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+            }`}
+            style={{ transitionDelay: `${index * 100}ms` }}
+          >
+            <StatCard {...stat} delay={index} />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="animate-on-scroll opacity-0">
+          <ComplaintChart data={complaintChartData.map(item => ({ month: item.month, value: item.total }))} />
         </div>
 
-        {/* Reports Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          {/* Semester Report - Complaints */}
-          <div className="bg-white rounded-lg shadow-md p-6 animate-fade-in">
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">SEMESTER REPORT</p>
-                <p className="text-3xl font-bold">2671</p>
-                <p className="text-sm text-gray-500">Complaints were registered</p>
-              </div>
-              <div className="bg-gray-100 rounded-full p-2">
-                <Bell className="w-5 h-5 text-gray-500" />
-              </div>
-            </div>
-            <div className="h-48 mt-6 flex items-center justify-center">
-              {/* Placeholder for line chart */}
-              <div className="w-full h-full bg-gray-50 rounded-lg flex items-center justify-center">
-                <div className="relative w-full h-full">
-                  {/* Simplified chart dots */}
-                  {[
-                    { x: '10%', y: '30%' }, { x: '20%', y: '40%' }, { x: '30%', y: '50%' },
-                    { x: '40%', y: '20%' }, { x: '50%', y: '60%' }, { x: '60%', y: '40%' },
-                    { x: '70%', y: '30%' }, { x: '80%', y: '50%' }, { x: '90%', y: '20%' }
-                  ].map((point, i) => (
-                    <div 
-                      key={i}
-                      className="absolute w-4 h-4 bg-blue-400 rounded-full transform -translate-x-1/2 -translate-y-1/2"
-                      style={{ left: point.x, top: point.y, animation: `pulse 2s infinite ${i * 0.2}s` }}
-                    ></div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Semester Report - Solved and Unsolved */}
-          <div className="bg-white rounded-lg shadow-md p-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-            <div className="flex justify-between items-center mb-4">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">SEMESTER REPORT</p>
-                <p className="text-sm text-gray-500">Solved and Unsolved Complaints</p>
-              </div>
-              <div className="bg-gray-100 rounded-full p-2">
-                <Bell className="w-5 h-5 text-gray-500" />
-              </div>
-            </div>
-            <div className="h-48 mt-6 flex items-center justify-center">
-              {/* Placeholder for Pie chart */}
-              <div className="relative w-40 h-40 rounded-full overflow-hidden">
-                <div className="absolute w-full h-full bg-purple-400" style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)' }}></div>
-                <div className="absolute w-full h-full bg-pink-400" style={{ clipPath: 'polygon(0 50%, 100% 50%, 100% 100%, 0 100%)' }}></div>
-                <div className="absolute w-20 h-20 bg-white rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          {/* Attendance */}
-          <div className="bg-white rounded-lg shadow-md p-6 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold">Attendance</h3>
-              <button className="text-blue-500 font-medium">View Status</button>
-            </div>
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <p>28 On Time</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <p>7 Late Attendance</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <p>28 Not Present</p>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-center">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full border-4 border-gray-200"></div>
-                <div className="absolute top-0 left-0 w-24 h-24 rounded-full border-4 border-transparent border-t-blue-500 transform -rotate-45"></div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                  <p className="font-bold">2/30</p>
-                  <p className="text-xs text-gray-500">This Month Leave</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Map */}
-          <div className="bg-white rounded-lg shadow-md p-6 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-            <div className="mb-4">
-              <h3 className="text-lg font-bold">Location of the All user</h3>
-            </div>
-            <div className="h-64 bg-blue-100 rounded-lg relative overflow-hidden">
-              <img src="/api/placeholder/600/300" alt="Map" className="w-full h-full object-cover" />
-              {/* Markers */}
-              <div className="absolute top-1/4 left-1/4 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">1</div>
-              <div className="absolute bottom-1/3 right-1/3 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs">3</div>
-            </div>
-          </div>
+        <div className="animate-on-scroll opacity-0">
+          <ComplaintPieChart data={pieChartData} />
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 flex justify-around">
-        <button className="p-2 rounded-full bg-blue-500 text-white">
-          <Home className="w-6 h-6" />
-        </button>
-        <button className="p-2 rounded-full hover:bg-gray-100">
-          <Users className="w-6 h-6" />
-        </button>
-        <button className="p-2 rounded-full hover:bg-gray-100">
-          <MessageSquare className="w-6 h-6" />
-        </button>
-        <button className="p-2 rounded-full hover:bg-gray-100">
-          <Bell className="w-6 h-6" />
-        </button>
-        <button className="p-2 rounded-full hover:bg-gray-100">
-          <Send className="w-6 h-6" />
-        </button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-20">
+        <div className="animate-on-scroll opacity-0">
+          <UserStatsChart  />
+        </div>
+
+        <div className="animate-on-scroll opacity-0">
+          <ComplaintLeadersCard setTopComplainers={setTopComplainers} />
+        </div>
       </div>
 
       <style>{`
-        @keyframes pulse {
-          0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.6s ease-out forwards;
-        }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        @keyframes ping-slow {
+          0% { transform: scale(1); opacity: 0.8; }
+          70% { transform: scale(2); opacity: 0; }
+          100% { transform: scale(2.5); opacity: 0; }
+        }
+        
+        .animate-ping-slow {
+          animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
       `}</style>
-    </div>
+    </>
   );
 }

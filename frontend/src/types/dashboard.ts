@@ -1,3 +1,5 @@
+import { DateType } from "./complaint";
+
 export interface SalesDataPoint {
     name: string;
     value: number;
@@ -20,20 +22,19 @@ export interface SalesDataPoint {
   }
   
  
-export interface ClientFormData {
-  id :number;
+export interface Client {
+  id : string
   email: string;
-  name: string;
-  // attendedDate: string;
-  // contactNumber: string;
-  // address: string;
-  // productName: string;
-  // quantity: string;
-  // version: string;
-  // brand: string;
-  // model: string;
-  // warrantyDate: string;
-  // guaranteeDate: string;
+  clientName: string;
+  attendedDate: string;
+  contactNumber: string;
+  address: string;
+  productName: string;
+  quantity: string;
+  brand: string;
+  model: string;
+  warrantyDate: string;
+  guaranteeDate: string;
   status : string;
   lastLogin: string;
 }
@@ -51,6 +52,17 @@ export interface EmployeeFormData {
   position: 'coordinator' | 'mechanic'; 
   previousJob: string;
   experience: string;
+  status : string;
+}
+
+
+export interface  responseData {
+  employeeName : string;
+  message: string;
+  token: string;
+  emailId : string;
+  position :  string;
+  id : string
 }
 
 export interface ResetPasswordEmailFormData {
@@ -73,7 +85,60 @@ export interface ResetPasswordEmailFormData {
   }
 
   export interface Admin{
-    token : string;
+    accessToken : string;
     email : string;
+    id: string;
     password : string; 
   }
+
+  export interface EmployeeResponse extends EmployeeFormData {
+  id: string;
+  status: 'active' | 'inactive';
+}
+
+export interface FormData {
+  id: string;
+  email: string;
+  ClientName: string;
+  attendedDate: string;
+  contactNumber: string;
+  address: string;
+  productName: string;
+  quantity: string;
+  brand: string;
+  model: string;
+  warrantyDate: string;
+  guaranteeDate: string;
+  status: string;
+  lastLogin: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  place: string;
+  district: string;
+  status: "active" | "inactive";
+  attendanceData: string;
+  address: string;
+  productName: string;
+  quantity: string;
+  brand: string;
+  model: string;
+  warrantyDate: string;
+  guaranteeDate: string;
+  lastLogin: string;
+}
+
+export interface Product {
+  id: string;
+  productName: string; 
+  model: string;
+  brand: string;     
+  quantity: string;  
+  warrantyDate: DateType;
+  guaranteeDate: DateType;
+  status: string;
+}

@@ -1,10 +1,20 @@
 // src/api/clientApi.ts
-import axios from "axios";
-import { ClientFormData } from "../../types/dashboard";
+import axiosInstance from "../axiosInstance";
 
-export const ClientApi = async (data: ClientFormData): Promise<any> => {
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/admin`;
+
+
+export const ClientApi = async (data: any): Promise<any> => {
   try {
-    const response = await axios.post("http://localhost:5000/api/admin/createUser", data);
+    const response = await axiosInstance.post(
+      `${API_BASE_URL}/createUser`, 
+      data,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Client API error", error);
@@ -12,13 +22,129 @@ export const ClientApi = async (data: ClientFormData): Promise<any> => {
   }
 };
 
-export const ClientListApi = async (): Promise<ClientFormData> => {
+export const ClientListApi = async (page: number = 1, limit: number = 10) => {
   try {
-    const response = await axios.get("http://localhost:5000/api/admin/getAllClients");
-    console.log("Client List API response", response.data);
+    const response = await axiosInstance.get(`${API_BASE_URL}/getAllClients`, {
+      params: { page, limit }
+    });
+    console.log(response , "2352345")
     return response.data;
   } catch (error) {
-    console.error("Client List API error", error);
+    console.error('Error fetching clients:', error);
+    throw error;
+  }
+};
+
+
+
+export const UpdateClientStatusApi = async (clientId: string, status: string): Promise<any> => {
+  try {
+    console.log(clientId)
+    const response = await axiosInstance.patch(
+      `${API_BASE_URL}/updateStatusClient/${clientId}`,
+      { status },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log("Update Status API response", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Update Status API error", error);
     throw error;
   }
 }
+
+
+
+export const UpdateClientApi = async (id: string, data: any): Promise<any> => {
+  try {
+    const response = await axiosInstance.patch(
+      `${API_BASE_URL}/editClient/${id}`,
+      data,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Update Client API error", error);
+    throw error;
+  }
+};
+
+
+export const getClientById = async (clientId: string): Promise<any> => {
+  try {
+    const response = await axiosInstance.get(
+      `${API_BASE_URL}/getClient/${clientId}`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log(response, "2")
+    return response.data;
+  } catch (error: any) {
+    console.error("Get Client API error", error);
+    throw error;
+  }
+};
+export const softDeleteClientApi = async (clientId: string): Promise<any> => {
+  try {
+    console.log(clientId , "123")
+    const url = `${API_BASE_URL}/softDeleteUser/${clientId}`;
+    console.log('Attempting to call:', url);
+
+    const response = await axiosInstance.patch(url, {}, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      validateStatus: (status) => status < 500  
+    });
+
+    console.log('Response received:', response);
+    
+    if (response.status === 404) {
+      throw new Error(`Endpoint not found: ${url}`);
+    }
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Complete error details:", {
+      message: error.message,
+      config: error.config,
+      response: error.response?.data
+    });
+    throw error;
+  }
+};
+
+export const searchClientsApi = async (
+  searchTerm: string,
+  status: 'all' | 'active' | 'inactive',
+  page: number,
+  limit: number
+) => {
+  try {
+    console.log(searchTerm , "234" , page, "123234" , limit , "345")
+    const response = await axiosInstance.get(`${API_BASE_URL}/search`, {
+      params: {
+        searchTerm,
+        status: status === 'all' ? undefined : status,
+        page,
+        limit
+      }
+    });
+    console.log(response , "q234235346")
+    return response.data;
+  } catch (error) {
+    console.error('Error searching clients:', error);
+    throw error;
+  }
+};

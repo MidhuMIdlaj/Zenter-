@@ -3,9 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import MechanicSidebar from '../../pages/mechanic/MechanicSidebar';
 import MechanicHeader from '../../pages/mechanic/MechanicHeader';
-import NotificationPanel, { Notification } from '../mechanicn/NotificationPanel';
+import NotificationPanel, { Notification } from './NotificationPanel';
 import { selectEmployeeAuthData } from '../../store/selectors';
 import { io } from 'socket.io-client';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const MechanicLayout = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
@@ -13,136 +15,192 @@ const MechanicLayout = () => {
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [globalUnreadCount, setGlobalUnreadCount] = useState(0);
+  const [socket, setSocket] = useState<any | null>(null);
   const token = employeeData?.token;
   const userId = employeeData?.id;
-
   const mechanicId = employeeData?.id || '';
   const mechanicName = `${employeeData?.employeeName || 'Unknown'} - ${employeeData?.position || 'Mechanic'}`;
-  
   const location = useLocation();
-  
+
   const getActivePage = () => {
     const path = location.pathname;
     if (path.includes('/dashboard')) return 'dashboard';
     if (path.includes('/tasks')) return 'tasks';
     if (path.includes('/complaints')) return 'complaints';
     if (path.includes('/history')) return 'history';
+    if (path.includes('/chat')) return 'chat';
     return 'dashboard';
   };
 
-   useEffect(() => {
+  const fetchNotifications = useCallback(async () => {
+    if (!mechanicId) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/notification/notifications/${mechanicId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+        const unread = data.notifications?.filter((n: Notification) => !n.read).length || 0;
+        setUnreadCount(unread);
+        setGlobalUnreadCount(unread);
+        localStorage.setItem('mechanicUnreadCount', unread.toString());
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  }, [mechanicId, token]);
+
+  useEffect(() => {
     if (!userId || !token) return;
 
-    const socket = io("http://localhost:5000", {
-      transports: ["websocket"],
+    const newSocket = io('http://localhost:5000', {
+      transports: ['websocket'],
       auth: { token },
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    socket.on("connect", () => {
-      socket.emit("join_user_room", userId);
+    newSocket.on('connect', () => {
+      console.log('Socket connected in MechanicLayout:', newSocket.id);
+      newSocket.emit('join_user_room', userId);
+      newSocket.emit('join_role_room', 'mechanic');
+      setSocket(newSocket);
     });
 
-    socket.on("new_chat_notification", () => {
+    newSocket.on('connect_error', (error) => {
+      console.error('Socket connection error in MechanicLayout:', error);
+    });
+
+    newSocket.on('new_complaint_assigned', (data: Notification) => {
+      console.log('Received new_complaint_assigned:', data);
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === data._id)) return prev;
+        return [{ ...data, type: 'complaint' }, ...prev];
+      });
+      setUnreadCount((prev) => prev + 1);
+      // setGlobalUnreadCount((prev) => prev + 1);
+      localStorage.setItem('mechanicUnreadCount', (globalUnreadCount + 1).toString());
+      const toastId = `complaint_${data._id}`;
+      if (!toast.isActive(toastId)) {
+        toast.info(
+          <div style={{
+            padding: '12px 16px',
+            borderLeft: '4px solid #0d6efd',
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+          }}>
+            <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+              📋 New Complaint Assigned
+            </div>
+            <div style={{ fontSize: '13px', color: '#555' }}>
+              {data.message}
+            </div>
+          </div>,
+          {
+            toastId,
+            position: 'top-right',
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: 'light',
+          }
+        );
+      }
+    });
+
+    newSocket.on('new_message', (data: Notification) => {
+      console.log('Received new_message in MechanicLayout:', data);
+      if (data.senderRole !== 'coordinator' || location.pathname === '/mechanic/chat') return;
+      const newNotification: Notification = {
+        _id: data._id || `message-${Date.now()}`,
+        title: data.title || 'New Message',
+        message: data.message || 'You have a new message',
+        createdAt: data.createdAt || new Date().toISOString(),
+        read: false,
+        type: 'chat',
+        senderId: data.senderId,
+        senderName: data.senderName,
+        senderRole: data.senderRole,
+        conversationId: data.conversationId,
+      };
+      setNotifications((prev) => {
+        if (prev.some((n) => n._id === newNotification._id)) return prev;
+        return [newNotification, ...prev];
+      });
+      setUnreadCount((prev) => prev + 1);
       setGlobalUnreadCount((prev) => prev + 1);
+      localStorage.setItem('mechanicUnreadCount', (globalUnreadCount + 1).toString());
+      const toastId = `message_${newNotification._id}`;
+      if (!toast.isActive(toastId)) {
+        toast.info(
+          <div style={{
+            padding: '12px 16px',
+            borderLeft: '4px solid #0d6efd',
+            backgroundColor: '#ffffff',
+            borderRadius: '6px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+          }}>
+            <div style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}>
+              📩 New Message
+            </div>
+            <div style={{ fontSize: '13px', color: '#555' }}>
+              From: <strong>{newNotification.senderName} (Coordinator)</strong>
+              <br />
+              {newNotification.message}
+            </div>
+          </div>,
+          {
+            toastId,
+            position: 'top-right',
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            theme: 'light',
+          }
+        );
+      }
     });
 
-    socket.on("chat_notifications_read", () => {
+    newSocket.on('chat_notifications_read', () => {
+      console.log('Received chat_notifications_read in MechanicLayout');
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setGlobalUnreadCount((prev) => Math.max(0, prev - 1));
+      localStorage.setItem('mechanicUnreadCount', Math.max(0, globalUnreadCount - 1).toString());
+      fetchNotifications();
+    });
+
+    newSocket.on('all_chat_notifications_read', () => {
+      console.log('Received all_chat_notifications_read in MechanicLayout');
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
       setGlobalUnreadCount(0);
+      localStorage.setItem('mechanicUnreadCount', '0');
+      fetchNotifications();
     });
 
     return () => {
-      socket.disconnect();
+      console.log('Cleaning up socket in MechanicLayout');
+      newSocket.off('new_complaint_assigned');
+      newSocket.off('new_message');
+      newSocket.off('chat_notifications_read');
+      newSocket.off('all_chat_notifications_read');
+      newSocket.disconnect();
     };
-  }, [userId, token]);
+  }, [userId, token, location.pathname, fetchNotifications, globalUnreadCount]);
 
-  // NEW: Load initial notifications
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch(`http://localhost:5000/api/notification/notifications/${mechanicId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(data.notifications || []);
-          setUnreadCount(data.unreadCount || 0);
-        }
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-      }
-    };
-
-    if (mechanicId) {
-      fetchNotifications();
-    }
-  }, [mechanicId]);
-
-  const handleNotificationToggle = () => {
-    setShowNotifications(!showNotifications);
-  };
-
-  // UPDATED: Improved notification handler
-  const handleNewNotification = useCallback((newNotification: Notification) => {
-    console.log('📢 New notification received:', newNotification);
-    setNotifications(prev => {
-      // Prevent duplicates
-      if (prev.some(n => n._id === newNotification._id)) return prev;
-      return [newNotification, ...prev];
-    });
-    setUnreadCount(prev => prev + 1);
-  }, []);
-
-  // UPDATED: Mark single notification as read
-  const handleMarkAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/notification/notifications/${notificationId}/mark-read`,
-        { method: 'POST', credentials: 'include' }
-      );
-
-      if (response.ok) {
-        setNotifications(prev =>
-          prev.map(n =>
-            n._id === notificationId ? { ...n, read: true } : n
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
-
-  // UPDATED: Mark all as read
-  const handleMarkAllAsRead = async () => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/notification/notifications/mark-all-read`,
-        { 
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: mechanicId }),
-          credentials: 'include'
-        }
-      );
-
-      if (response.ok) {
-        setNotifications(prev =>
-          prev.map(n => ({ ...n, read: true }))
-        );
-        setUnreadCount(0);
-      }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
-  };
-
-  // NEW: Update unread count whenever notifications change
-  useEffect(() => {
-    const count = notifications.filter(n => !n.read).length;
-    setUnreadCount(count);
-  }, [notifications]);
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   if (!mechanicId) {
     return (
@@ -157,33 +215,71 @@ const MechanicLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <MechanicSidebar activePage={getActivePage()} />
-      
+      <MechanicSidebar activePage={getActivePage()} unreadCount={globalUnreadCount} />
       <div className="md:ml-64 min-h-screen">
         <MechanicHeader
           mechanicName={mechanicName}
           isCheckedIn={isCheckedIn}
           onCheckIn={() => setIsCheckedIn(true)}
           onCheckOut={() => setIsCheckedIn(false)}
-          onNotificationClick={handleNotificationToggle}
-          notificationCount={unreadCount} 
+          onNotificationClick={() => setShowNotifications(!showNotifications)}
+          notificationCount={globalUnreadCount}
+          socket={socket}
         />
-        
         <div className="p-6">
-          <Outlet />
+          <Outlet context={{ socket }} />
         </div>
       </div>
-      
       {showNotifications && (
-        <NotificationPanel 
+        <NotificationPanel
           onClose={() => setShowNotifications(false)}
           recipientId={mechanicId}
           notifications={notifications}
-          onNewNotification={handleNewNotification}
-          onMarkAsRead={handleMarkAsRead}
-          onMarkAllAsRead={handleMarkAllAsRead}
+          onNewNotification={(notification) => {
+            setNotifications((prev) => {
+              if (prev.some((n) => n._id === notification._id)) return prev;
+              return [notification, ...prev];
+            });
+            // Do not increment counts here; handled in socket events
+          }}
+          onMarkAsRead={async (notificationId) => {
+            await fetch(
+              `http://localhost:5000/api/notification/notifications/${notificationId}/mark-read`,
+              {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                credentials: 'include',
+              }
+            );
+            setNotifications((prev) =>
+              prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
+            );
+            setUnreadCount((prev) => Math.max(0, prev - 1));
+            setGlobalUnreadCount((prev) => Math.max(0, prev - 1));
+            socket?.emit('chat_notifications_read', { userId, notificationId });
+          }}
+          onMarkAllAsRead={async () => {
+            await fetch(
+              `http://localhost:5000/api/notification/notifications/mark-all-chat-read`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ userId: mechanicId }),
+                credentials: 'include',
+              }
+            );
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            setUnreadCount(0);
+            setGlobalUnreadCount(0);
+            socket?.emit('all_chat_notifications_read', { userId });
+          }}
+          socket={socket}
         />
       )}
+      <ToastContainer limit={1} />
     </div>
   );
 };

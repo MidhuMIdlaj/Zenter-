@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Clock, MapPin, Phone, User, Calendar, CheckCircle, 
+  Clock, MapPin,  User, Calendar, CheckCircle, 
   XCircle, AlertTriangle, Eye, ChevronRight, Star, 
-  Timer, Wrench, PlayCircle, PauseCircle, Filter,
-  AlertCircle, Edit3, Save, X
+   Wrench, PlayCircle, PauseCircle,
+  AlertCircle, 
 } from 'lucide-react';
 import { 
   getMechanicComplaints, 
@@ -16,8 +16,6 @@ import { useSelector } from 'react-redux';
 import { selectEmployeeAuthData } from '../../store/selectors';
 import { toast } from 'react-toastify';
 import TaskCompletionModal from './CompletionModal';
-import config from '../../config/config';
-// import { fetchMechanicStatus } from '../../api/admin/Employee';
 
 
 
@@ -93,47 +91,62 @@ const MechanicTasks: React.FC = () => {
   const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false);
   const [taskToComplete, setTaskToComplete] = useState<TaskData | null>(null);
   useEffect(() => {
-    const fetchTasks = async () => {
+   const fetchTasks = async () => {
   try {
     setIsLoading(true);
     if (employeeData?.id) {
       const data = await getMechanicComplaints(employeeData.id);
       
-      const formattedTasks = data.map((task: any) => ({
-        id: task._id,
-        _id: task._id,
-        title: task.description || 'Service Request',
-        customerName: task.customerName || 'Customer',
-        customerPhone: task.customerPhone || '',
-        customerEmail: task.customerEmail || '',
-        location: task.address || 'Location not specified',
-        priority: task.priority || 'medium',
-        workingStatus: task.workingStatus || 'pending',
-        status: task.status || 'active',
-        assignedDate: task.createdAt || new Date().toISOString(),
-        description: task.description || 'No description provided',
-        vehicleDetails: {
-          make: task.vehicleMake || task.productName || '',
-          model: task.model || '',
-          year: task.vehicleYear || '',
-          licensePlate: task.licensePlate || ''
-        },
-        estimatedTime: task.estimatedTime || '1-2 hours',
-        serviceType: task.serviceType || 'Repair',
-        notes: task.notes || '',
-        productName: task.productName || '',
-        guaranteeDate: task.guaranteeDate || '',
-        warrantyDate: task.warrantyDate || '',
-        createdBy: task.createdBy || '',
-        CreatedByRole: task.CreatedByRole || 'customer',
-        createdAt: task.createdAt || new Date().toISOString(),
-        updatedAt: task.updatedAt || new Date().toISOString(),
-        assignedMechanicId: task.assignedMechanicId || [],
-        rejectionReason: task.rejectionReason || '',
-        completionDetails: task.completionDetails || undefined,
-        isDeleted: task.isDeleted || false
-      } as TaskData));
-      
+      const formattedTasks = data.map((task: any) => {
+        // Normalize status values with proper type safety
+        const statusMap: Record<string, WorkingStatus> = {
+          'progress': 'processing',
+          'processing': 'processing',
+          'accepted': 'accept',
+          'accept': 'accept',
+          'completed': 'completed',
+          'rejected': 'rejected',
+          'pending': 'pending'
+        };
+
+        const workingStatus = statusMap[task.workingStatus?.toLowerCase()] || 'pending';
+
+        return {
+          id: task.id,
+          _id: task._id || task.id,
+          title: task.description || task.titel || 'Service Request',
+          customerName: task.clientName || task.customerName || 'Customer',
+          customerPhone: task.contactNumber || task.customerPhone || '',
+          customerEmail: task.customerEmail || '',
+          location: task.location || task.address || 'Location not specified',
+          priority: (task.priority?.toLowerCase() as Priority) || 'medium',
+          workingStatus,
+          status: (task.status?.toLowerCase() as ServiceRequestStatus) || 'active',
+          assignedDate: task.createdAt || new Date().toISOString(),
+          description: task.description || 'No description provided',
+          vehicleDetails: {
+            make: task.vehicleMake || task.productName || '',
+            model: task.model || '',
+            year: task.vehicleYear || '',
+            licensePlate: task.licensePlate || ''
+          },
+          estimatedTime: task.estimatedTime || '1-2 hours',
+          serviceType: task.serviceType || 'Repair',
+          notes: task.notes || '',
+          productName: task.productName || '',
+          guaranteeDate: task.guaranteeDate || '',
+          warrantyDate: task.warrantyDate || '',
+          createdBy: task.createdBy || '',
+          CreatedByRole: (task.CreatedByRole as CreatedByRole) || 'customer',
+          createdAt: task.createdAt || new Date().toISOString(),
+          updatedAt: task.updatedAt || new Date().toISOString(),
+          assignedMechanicId: task.assignedMechanics || task.assignedMechanicId || [],
+          rejectionReason: task.rejectionReason || '',
+          completionDetails: task.completionDetails || undefined,
+          isDeleted: task.isDeleted || false
+        } as TaskData;
+      });
+
       setTasks(formattedTasks);
     }
   } catch (error) {
@@ -143,20 +156,15 @@ const MechanicTasks: React.FC = () => {
     setIsLoading(false);
   }
 };
-
     fetchTasks();
   }, [employeeData?.id]);
 
 
 
+type TaskAction = 'accept' | 'reject' | 'processing' | 'completed';
+type WorkingStatus = 'pending' | 'accept' | 'processing' | 'completed' | 'rejected';
 
- type TaskAction = 'accept' | 'reject' | 'processing' | 'completed';
-type WorkingStatus = 'accept' | 'processing' | 'completed' | 'rejected';
-
-const handleTaskAction = async (
-  taskId: string,
-  action: TaskAction
-) => {
+const handleTaskAction = async (taskId: string, action: TaskAction) => {
   try {
     if (action === 'completed') {
       const task = tasks.find(t => t.id === taskId);
@@ -166,12 +174,23 @@ const handleTaskAction = async (
       }
       return;
     }
-
     setActionLoading(taskId);
+    const statusMap: Record<TaskAction, WorkingStatus> = {
+      'accept': 'accept',
+      'reject': 'rejected',
+      'processing': 'processing',
+      'completed': 'completed'
+    };
 
-    if (!employeeData?.id) {
-      throw new Error('Mechanic ID not found');
-    }
+    const newStatus = statusMap[action];
+
+    setTasks(prevTasks =>
+      prevTasks.map(task =>
+        task.id === taskId ? { ...task, workingStatus: newStatus } : task
+      )
+    );
+
+    if (!employeeData?.id) throw new Error('Mechanic ID not found');
 
     let updatedTask;
     if (action === 'accept') {
@@ -182,30 +201,25 @@ const handleTaskAction = async (
       updatedTask = await updateComplaintStatus(taskId, action, employeeData.id);
     }
 
-    const newStatus = (action === 'reject' ? 'rejected' : action) as WorkingStatus;
-
-
-    setTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === taskId
-          ? { ...task, workingStatus: newStatus }
-          : task
-      )
-    );
-
-    setTimeout(() => {
-      if (newStatus === 'accept' || newStatus === 'processing') {
+    switch (newStatus) {
+      case 'accept':
+      case 'processing':
         setActiveTab('inprogress');
-      } else if (newStatus === 'completed' || newStatus === 'rejected') {
+        break;
+      case 'completed':
+      case 'rejected':
         setActiveTab('completed');
-      }
-    }, 500);
+        break;
+      case 'pending':
+        setActiveTab('pending');
+        break;
+    }
 
     toast.success(`Task ${action === 'reject' ? 'rejected' : action} successfully`);
-
   } catch (error) {
     console.error('Error updating task:', error);
     toast.error(`Failed to ${action} task`);
+    setTasks(prevTasks => prevTasks);
   } finally {
     setActionLoading(null);
     setShowRejectModal(false);
@@ -214,14 +228,11 @@ const handleTaskAction = async (
   }
 };
 
-
-
-const handleTaskCompletion = async (completionData: { description: string; photos: File[] }) => {
+const handleTaskCompletion = async (completionData: { description: string; photos: File[];  amount: number, paymentStatus : string, paymentMothod ?: string | null,   }) => {
   if (!taskToComplete || !employeeData?.id) return;
   try {
     setActionLoading(taskToComplete.id);
-    
-    // Create FormData and append all fields
+    console.log(completionData, "completionData");
     const formData = new FormData();
     formData.append('taskId', taskToComplete.id);
     formData.append('mechanicId', employeeData.id);
@@ -235,7 +246,10 @@ const handleTaskCompletion = async (completionData: { description: string; photo
       taskToComplete.id,
       employeeData.id,
       completionData.description,
-      completionData.photos
+      completionData.paymentStatus,
+      completionData.paymentMothod  ?? '',
+      completionData.amount,
+      completionData.photos,
     );
     console.log(result, "completeTask result");
     setTasks(prevTasks => 
@@ -246,7 +260,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
       )
     );
 
-    // UI updates
     setTimeout(() => setActiveTab('completed'), 500);
     toast.success('Task completed successfully');
     setShowCompletionModal(false);
@@ -279,7 +292,7 @@ const handleTaskCompletion = async (completionData: { description: string; photo
       }
     }, 500);
   };
-
+  console.log(tasks , "23452435345")
   const filteredTasks = tasks.filter(task => {
     switch (activeTab) {
       case 'pending':
@@ -684,9 +697,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                     Task & Customer
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                    Vehicle
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                     Service Details
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -728,21 +738,8 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-semibold text-gray-900 text-sm">
-                          {task.vehicleDetails.make} {task.vehicleDetails.model}
-                        </p>
-                        <p className="text-xs text-gray-500">{task.vehicleDetails.year}</p>
-                        {task.vehicleDetails.licensePlate && (
-                          <div className="inline-block bg-gray-800 text-white px-2 py-1 rounded text-xs font-mono mt-1">
-                            {task.vehicleDetails.licensePlate}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
                         <p className="text-sm font-medium text-gray-900">{task.serviceType}</p>
-                        <p className="text-xs text-gray-600 mt-1">{task.description}</p>
+                        <p className="text-xs text-gray-600 mt-1">{task.title}</p>
                         <div className="flex items-center mt-2 space-x-3">
                           <div className="flex items-center">
                             <Clock size={12} className="text-gray-400 mr-1" />
@@ -760,43 +757,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                         <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(task.workingStatus)}`}>
                           {getStatusLabel(task.workingStatus)}
                         </span>
-                        {editingTask === task.id ? (
-                          <div className="flex items-center space-x-1">
-                            <select
-                              value={editStatus}
-                              onChange={(e) => setEditStatus(e.target.value as TaskData['workingStatus'])}
-                              className="text-xs border rounded px-2 py-1"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="accept">Accepted</option>
-                              <option value="processing">Processing</option>
-                              <option value="completed">Completed</option>
-                              <option value="reject">Rejected</option>
-                            </select>
-                            <button
-                              onClick={() => handleEditStatus(task.id, editStatus)}
-                              className="p-1 text-green-600 hover:text-green-800"
-                            >
-                              <Save size={12} />
-                            </button>
-                            <button
-                              onClick={() => setEditingTask(null)}
-                              className="p-1 text-gray-400 hover:text-gray-600"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setEditingTask(task.id);
-                              setEditStatus(task.workingStatus);
-                            }}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                          >
-                            <Edit3 size={12} />
-                          </button>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -839,7 +799,7 @@ const handleTaskCompletion = async (completionData: { description: string; photo
 
       {/* Task Details Modal */}
       {selectedTask && (
-  <div
+    <div
     className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" 
     onClick={() => setSelectedTask(null)}
   >
@@ -862,10 +822,8 @@ const handleTaskCompletion = async (completionData: { description: string; photo
           {/* Basic Task Information */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h3 className="font-semibold text-gray-900 text-lg mb-2">{selectedTask.title}</h3>
-            <p className="text-gray-600">{selectedTask.description}</p>
+            <p className="text-gray-600">{selectedTask.title}</p>
           </div>
-
-          {/* Customer Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="text-sm font-medium text-gray-500 mb-2">CUSTOMER</h4>
@@ -886,7 +844,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
             </div>
           </div>
 
-          {/* Vehicle Information */}
           {selectedTask.vehicleDetails.make && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <h4 className="text-sm font-medium text-gray-500 mb-2">PRODUCT</h4>
@@ -902,7 +859,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
             </div>
           )}
 
-          {/* Completion Details - Only show if task is completed */}
           {selectedTask.workingStatus === 'completed' && selectedTask.completionDetails && (
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <h4 className="text-sm font-medium text-blue-700 mb-3 flex items-center">
@@ -910,13 +866,11 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                 COMPLETION DETAILS
               </h4>
               
-              {/* Completion Description */}
               <div className="mb-4">
                 <h5 className="text-xs font-medium text-gray-500 mb-1">WORK DONE</h5>
                 <p className="text-gray-700">{selectedTask.completionDetails.description}</p>
               </div>
               
-              {/* Completion Photos */}
               {selectedTask.completionDetails.photos && selectedTask.completionDetails.photos.length > 0 && (
                 <div>
                   <h5 className="text-xs font-medium text-gray-500 mb-2">PHOTOS</h5>
@@ -937,7 +891,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                 </div>
               )}
               
-              {/* Completion Metadata */}
               <div className="mt-4 flex items-center text-xs text-gray-500">
                 <Clock className="mr-1" size={12} />
                 <span>
@@ -947,7 +900,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
             </div>
           )}
 
-          {/* Task Timeline */}
           <div className="bg-gray-50 p-4 rounded-lg">
             <h4 className="text-sm font-medium text-gray-500 mb-3">TASK TIMELINE</h4>
             <div className="space-y-3">
@@ -989,14 +941,14 @@ const handleTaskCompletion = async (completionData: { description: string; photo
                 </div>
               )}
             </div>
-          </div>
+           </div>
+         </div>
         </div>
       </div>
     </div>
-  </div>
-)}
+  )}
 
-      {showRejectModal && (
+  {showRejectModal && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
     <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
       <div className="flex justify-between items-start mb-4">
@@ -1066,7 +1018,7 @@ const handleTaskCompletion = async (completionData: { description: string; photo
     isLoading={actionLoading === taskToComplete.id}
   />
 )}
-    </div>
+ </div>
   );
 };
 

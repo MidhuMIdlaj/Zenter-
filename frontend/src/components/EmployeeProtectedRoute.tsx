@@ -1,37 +1,42 @@
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { ReactNode } from 'react';
 import { selectEmployeeAuthData } from '../store/selectors';
 
-const EmployeeProtectedRoute = () => {
-  const location = useLocation();
-  const { isAuthenticated, isLoading, position } = useSelector(selectEmployeeAuthData);
- const navigate  = useNavigate()
-  if (isLoading) {
+interface EmployeeProtectedRouteProps {
+  children: ReactNode;
+  allowedPositions?: string[]; 
+}
+
+const EmployeeProtectedRoute = ({ children, allowedPositions }: EmployeeProtectedRouteProps) => {
+  const { isAuthenticated, employeeData, loading } = useSelector(selectEmployeeAuthData);
+
+  // Loading state
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Verifying authentication...</p>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
-  console.log("1")
-  console.log(isAuthenticated, "isAuthenticated")
-  if (!isAuthenticated) {
-    console.log("2")
-     navigate("/employee-login")
+
+  if (!isAuthenticated || !employeeData) {
+    console.log('Not authenticated, redirecting to login');
+    return <Navigate to="/employee-login" replace />;
   }
 
-  const path = location.pathname;
-  if (path.includes('/mechanic') && position == 'mechanic') {
-    return <Navigate to="/mechanic/dashboard" replace />;
-  }
-  if (path.includes('/coordinator') && position == 'coordinator') {
-    return <Navigate to="/coordinator/dashboard" replace />;
+  if (allowedPositions && !allowedPositions.some(pos => 
+    employeeData.position.toLowerCase().includes(pos.toLowerCase()))) {
+    console.log('Position not allowed:', employeeData?.position);
+    return <Navigate to="/unauthorized" replace />;
   }
 
-  return <Outlet />;
+  console.log('Auth Check:', { isAuthenticated, employeeData });
+
+  return <>{children}</>;
 };
 
 export default EmployeeProtectedRoute;

@@ -34,6 +34,9 @@ export interface CompletionDetails {
   photos: string[];
   completedAt: DateType;
   completedBy: string;
+  paymentStatus?: string;
+  paymentMethod?: string | null;
+  amount?: number;
 }
 
 export interface ComplaintFormData {

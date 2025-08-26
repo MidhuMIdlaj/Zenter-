@@ -388,7 +388,7 @@ const CoordinatorComplaintTable: React.FC = () => {
 
     switch (status.toLowerCase()) {
       case "pending":
-        return "#F59E0B";
+        return "#fda000ff";
       case "in-progress":
       case "processing":
         return "#3B82F6";
@@ -414,6 +414,65 @@ const CoordinatorComplaintTable: React.FC = () => {
         return "#6B7280";
     }
   };
+
+   type StatusValue = 
+    | 'pending' 
+    | 'processing' 
+    | 'accept' 
+    | 'in-progress' 
+    | 'resolved' 
+    | 'cancelled'
+    | 'completed'
+    | 'rejected'
+    | string;
+
+  const StatusBadge = ({ workingStatus, statusObj }: { 
+  workingStatus?: StatusValue;
+  statusObj?: { status: string; updatedAt: string; updatedBy: string };
+}) => {
+  const actualStatus = statusObj?.status || workingStatus || "";
+  
+  const statusText: Record<string, string> = {
+    pending: "Pending",
+    processing: "Processing",
+    accept: "Accepted",
+    "in-progress": "In Progress",
+    resolved: "Resolved",
+    cancelled: "Cancelled",
+    completed: "Completed",
+    rejected: "Rejected",
+  };
+
+  const statusColors: Record<string, string> = {
+    pending: "#FBBF24",
+    processing: "#3B82F6",
+    accept: "#10B981",
+    "in-progress": "#3B82F6",
+    resolved: "#10B981",
+    cancelled: "#EF4444",
+    completed: "#10B981",
+    rejected: "#EF4444",
+    "": "#6B7280",
+  };
+
+  const color = statusColors[actualStatus] || "#6B7280";
+  const bgColor = `${color}20`;
+  
+  return (
+    <div
+      className="px-3 py-1 rounded-full inline-flex items-center"
+      style={{ backgroundColor: bgColor }}
+    >
+      <span
+        className="w-2 h-2 rounded-full mr-1.5"
+        style={{ backgroundColor: color }}
+      ></span>
+      <span className="text-xs font-medium" style={{ color }}>
+        {statusText[actualStatus] || actualStatus}
+      </span>
+    </div>
+  );
+};
   
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -682,20 +741,13 @@ const CoordinatorComplaintTable: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                      <select
-                        value={complaint.status}
-                        onChange={(e) => handleQuickStatusUpdate(complaint.id, e.target.value)}
-                        className="px-3 py-1 rounded-full text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 outline-none"
-                        style={{
-                          backgroundColor: `${getStatusColor(complaint.status)}20`,
-                          color: getStatusColor(complaint.status)
-                        }}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                       <StatusBadge
+                  workingStatus={
+                    (complaint.workingStatus ||
+                      complaint.status ||
+                      "") as StatusValue
+                     }
+                   />
                     </td>
                     <td className="p-4">
                       <p className="text-sm text-gray-600">

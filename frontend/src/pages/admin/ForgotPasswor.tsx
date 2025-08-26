@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Mail, ArrowRight, CheckCircle, Lock, Key } from 'lucide-react';
 import { ForgotPasswordEmailApi, VerifyAdminOtpApi, ResetAdminPasswordApi } from '../../api/admin/auth';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 export default function AdminForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -51,7 +52,7 @@ export default function AdminForgotPasswordPage() {
       const response = await ForgotPasswordEmailApi(email);
       
       if (response.status === 200) {
-        alert('OTP sent to your email!');
+        toast.success('OTP sent to your email!');
         setStep(2);
         setCanResend(false);
         setResendTime(30);
@@ -76,7 +77,7 @@ export default function AdminForgotPasswordPage() {
       const response = await ForgotPasswordEmailApi(email);
       
       if (response.status === 200) {
-        alert('New OTP sent to your email!');
+        toast.success('OTP sent to your email!');
         setCanResend(false);
         setResendTime(30);
       } else {
@@ -139,9 +140,8 @@ export default function AdminForgotPasswordPage() {
     
     try {
       const response = await ResetAdminPasswordApi(email, password);
-      console.log("hi")
       if (response.status === 200) {
-        alert('Password reset successfully!');
+        toast.success('Password reset successfully!');
         navigate("/admin-login");
       } else {
         setError((response.data as any)?.message || 'Password reset failed');
@@ -157,8 +157,19 @@ export default function AdminForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
+        {/* Company Logo/Name Section */}
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center space-x-2">
+            <div className="bg-purple-600 text-white p-2 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-bold text-purple-800">Zenter</h1>
+          </div>
+        </div>
+
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
-          
           {/* Header with different color for admin */}
           <div className="bg-purple-600 p-6 relative overflow-hidden">
             <div className="absolute inset-0 opacity-20">
@@ -397,7 +408,7 @@ export default function AdminForgotPasswordPage() {
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
             <button
               type="button"
-              onClick={() => navigate("/admin/login")}
+              onClick={() => navigate("/admin-login")}
               className="text-sm text-gray-600 hover:text-purple-600 transition-colors duration-200"
             >
               Remember your password? Sign in

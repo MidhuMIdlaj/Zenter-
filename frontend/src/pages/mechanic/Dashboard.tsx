@@ -1,328 +1,485 @@
+// src/components/mechanic/MechanicDashboard.jsx
 import { useState, useEffect } from 'react';
-import { Clock, Users, DollarSign, ShoppingCart, MapPin, User } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { 
+  Clock, 
+  PenTool as Tool, 
+  CheckCircle, 
+  AlertCircle, 
+  Filter,
+  TrendingUp,
+  Award,
+  Timer,
+  BarChart3
+} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { getMechanicComplaints } from '../../api/cplaint/complaint'; 
+import ComplaintStatistics from './complaintStatistics';
+import StatusChart from './StatusChart';
+import { selectEmployeeAuthData } from '../../store/selectors';
+import { setCurrentComplaintId } from '../../store/ComplaintSlice';
+import { Complaint, ComplaintFormData } from '../../types/complaint';
+import MechanicInvoiceGenerator from '../../components/mechanicn/MechanicInvoiceGenerator';
 
-export default function MechanicDashboard() {
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+const MechanicDashboard = () => {
+  const [complaints, setComplaints] = useState<ComplaintFormData[]>([]);
+  const [filteredComplaints, setFilteredComplaints] = useState<ComplaintFormData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [activeView, setActiveView] = useState('performance'); 
+  const { employeeData } = useSelector(selectEmployeeAuthData);
+  const dispatch = useDispatch();
+  console.log(employeeData?.id, "employeeData in MechanicDashboard");
+  const mechanicId = employeeData?.id || '';
   
-  // Animation states
   const [animateStats, setAnimateStats] = useState(false);
   const [animateCharts, setAnimateCharts] = useState(false);
   
   useEffect(() => {
-    // Update time
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    
-    // Trigger animations sequentially
+    const loadComplaints = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getMechanicComplaints(mechanicId);
+        
+        if (data && data.length > 0) {
+          const complaintId = data[0]._id;
+          dispatch(setCurrentComplaintId(complaintId));
+        }
+        const formattedData = data.map(complaint => ({
+          ...complaint,
+          contactNumber: complaint.customerPhone || '',
+          workingStatus: (
+            ['pending', 'processing', 'completed', 'accept', 'reject']
+              .includes(complaint.workingStatus || 'pending') 
+              ? (complaint.workingStatus || 'pending')
+              : 'pending'
+          ) as ComplaintFormData['workingStatus'],
+          assignedMechanicId: complaint.assignedMechanicId || '', 
+          createdBy: complaint.createdBy || '', 
+          status: complaint.status !== undefined ? String(complaint.status) : undefined,
+          description: complaint.description || '', 
+        }));
+        setComplaints(formattedData);
+        console.log(formattedData, "formattedData");
+      } catch (error) {
+        console.error('Error loading complaints:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };  
+    loadComplaints();
     setTimeout(() => setAnimateStats(true), 300);
     setTimeout(() => setAnimateCharts(true), 800);
-    
-    return () => clearInterval(timer);
-  }, []);
+  }, [mechanicId, dispatch]);
+
+  // const handleComplaintUpdate = (updatedComplaint: Complaint) => {
+  //   setComplaints(prevComplaints => 
+  //     prevComplaints.map(complaint => 
+  //       complaint.id === updatedComplaint._id 
+  //         ? { ...complaint, workingStatus: updatedComplaint.workingStatus } 
+  //         : complaint
+  //     )
+  //   );
+  // };
+
+  useEffect(() => {
+    let filtered = complaints.filter(complaint => 
+      complaint.workingStatus !== 'reject'
+    );
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(complaint => {
+        if (statusFilter === 'pending') return complaint.workingStatus === 'pending';
+        if (statusFilter === 'processing') return complaint.workingStatus === 'processing' || complaint.workingStatus === 'accept';
+        if (statusFilter === 'completed') return complaint.workingStatus === 'completed';
+        return true;
+      });
+    }
+    console.log(filtered, "filtered");
+    setFilteredComplaints(filtered);
+  }, [statusFilter, complaints]); 
   
-  // Sample data for charts
-  const registeredData = {
-    count: 2671,
-    monthlyCounts: [65, 59, 80, 81, 56, 55, 40, 75, 85, 60, 48, 30]
-  };
-  
-  const semesterData = {
-    solved: 55,
-    unsolved: 25,
-    notched: 20
-  };
-  
-  const attendanceData = {
-    onTime: 28,
-    late: 7,
-    notPresent: 28
+  const stats = {
+    pending: complaints.filter(c => c.workingStatus === 'pending').length,
+    inProgress: complaints.filter(c => c.workingStatus === 'processing' || c.workingStatus === 'accept').length,
+    completed: complaints.filter(c => c.workingStatus === 'completed').length,
+    accepted: complaints.filter(c => c.workingStatus === 'accept').length,
+    rejected: complaints.filter(c => c.workingStatus === 'reject').length,
+    total: complaints.length
   };
 
+  // Performance metrics
+  const getPerformanceMetrics = () => {
+    const today = new Date();
+    const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const thisYear = new Date(today.getFullYear(), 0, 1);
+    
+    const thisWeekComplaints = complaints.filter(c => c.createdAt && new Date(c.createdAt) >= thisWeek);
+    const thisMonthComplaints = complaints.filter(c => c.createdAt && new Date(c.createdAt) >= thisMonth);
+    const thisYearComplaints = complaints.filter(c => c.createdAt && new Date(c.createdAt) >= thisYear);
+    return {
+      weeklyCompleted: thisWeekComplaints.filter(c => c.workingStatus === 'completed').length,
+      monthlyCompleted: thisMonthComplaints.filter(c => c.workingStatus === 'completed').length,
+      yearlyCompleted: thisYearComplaints.filter(c => c.workingStatus === 'completed').length,
+      averageCompletionTime: complaints.filter(c => c.workingStatus === 'completed').length > 0 ? 2.5 : 0, // Mock data
+    };
+  };
+
+  // Recent activity
+  const getRecentActivity = () => {
+    return complaints
+      .sort((a, b) => 
+        new Date(b.updatedAt ?? '').getTime() - new Date(a.updatedAt ?? '').getTime()
+      )
+      .slice(0, 5);
+  };
+
+  // Priority analysis
+  const getPriorityBreakdown = () => {
+    return {
+      high: complaints.filter(c => c.priority === 'high').length,
+      medium: complaints.filter(c => c.priority === 'medium').length,
+      low: complaints.filter(c => c.priority === 'low').length
+    };
+  };
+
+  // Trend data (mock for demonstration)
+  const getTrendData = () => {
+    return [
+      { month: 'Jan', completed: 15, pending: 8 },
+      { month: 'Feb', completed: 20, pending: 6 },
+      { month: 'Mar', completed: 18, pending: 10 },
+      { month: 'Apr', completed: 25, pending: 5 },
+      { month: 'May', completed: 22, pending: 7 },
+      { month: 'Jun', completed: 28, pending: 4 }
+    ];
+  };
+
+  const performanceMetrics = getPerformanceMetrics();
+  const recentActivity = getRecentActivity();
+  const priorityBreakdown = getPriorityBreakdown();
+  const trendData = getTrendData();
+
+  const renderAlternativeContent = () => {
+    switch(activeView) {
+      case 'performance':
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-gray-900 text-white p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-white overflow-hidden flex items-center justify-center">
-              <User size={32} className="text-gray-800" />
-            </div>
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold mb-4">Performance Overview</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <p>Hi Arun (Mechanic)</p>
+              <p className="text-sm text-blue-600">This Week</p>
+              <p className="text-2xl font-bold text-blue-800">{performanceMetrics.weeklyCompleted}</p>
+              <p className="text-xs text-blue-600">Completed</p>
             </div>
-          </div>
-          
-          <div className="text-xl font-bold">
-            Mark Your Attendance : 
-            <button 
-              onClick={() => setIsCheckedIn(true)}
-              className={`ml-4 px-4 py-2 rounded-md ${isCheckedIn ? 'bg-gray-600 text-gray-300' : 'bg-green-600 hover:bg-green-700'}`}
-              disabled={isCheckedIn}
-            >
-              Check In
-            </button>
-            <button 
-              onClick={() => setIsCheckedIn(false)}
-              className={`ml-2 px-4 py-2 rounded-md ${!isCheckedIn ? 'bg-gray-600 text-gray-300' : 'bg-red-600 hover:bg-red-700'}`}
-              disabled={!isCheckedIn}
-            >
-              Check Out
-            </button>
-          </div>
-        </div>
-      </header>
-      
-      {/* Dashboard Title */}
-      <div className="container mx-auto mt-6 flex items-center">
-        <h1 className="text-3xl font-bold ml-4">Dashboard</h1>
-        <span className="text-2xl ml-2">🏠</span>
-      </div>
-      
-      {/* Stats Cards */}
-      <div className="container mx-auto mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 px-4">
-        <div className={`bg-white p-4 rounded-lg shadow-md transition-all duration-500 transform ${animateStats ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-500 text-sm">TOTAL EARNED</p>
-              <h2 className="text-2xl font-bold">$32,587</h2>
-              <p className="text-green-500 text-sm mt-1">+2.5%</p>
-            </div>
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <DollarSign size={24} className="text-blue-500" />
-            </div>
+            <Award className="h-8 w-8 text-blue-500" />
           </div>
         </div>
         
-        <div className={`bg-white p-4 rounded-lg shadow-md transition-all duration-500 transform ${animateStats ? 'translate-y-0 opacity-100 delay-100' : 'translate-y-8 opacity-0'}`}>
-          <div className="flex justify-between items-start">
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm">TOTAL JOBS</p>
-              <h2 className="text-2xl font-bold">3,200</h2>
-              <p className="text-green-500 text-sm mt-1">+1.8%</p>
+              <p className="text-sm text-green-600">This Month</p>
+              <p className="text-2xl font-bold text-green-800">{performanceMetrics.monthlyCompleted}</p>
+              <p className="text-xs text-green-600">Completed</p>
             </div>
-            <div className="bg-purple-100 p-2 rounded-lg">
-              <Users size={24} className="text-purple-500" />
-            </div>
+            <TrendingUp className="h-8 w-8 text-green-500" />
           </div>
         </div>
         
-        <div className={`bg-white p-4 rounded-lg shadow-md transition-all duration-500 transform ${animateStats ? 'translate-y-0 opacity-100 delay-200' : 'translate-y-8 opacity-0'}`}>
-          <div className="flex justify-between items-start">
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm">PENDING JOBS</p>
-              <h2 className="text-2xl font-bold">1,503</h2>
-              <p className="text-red-500 text-sm mt-1">+0.5%</p>
+              <p className="text-sm text-purple-600">Avg. Time</p>
+              <p className="text-2xl font-bold text-purple-800">{performanceMetrics.averageCompletionTime}d</p>
+              <p className="text-xs text-purple-600">Per Task</p>
             </div>
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Clock size={24} className="text-blue-500" />
-            </div>
+            <Timer className="h-8 w-8 text-purple-500" />
           </div>
         </div>
         
-        <div className={`bg-white p-4 rounded-lg shadow-md transition-all duration-500 transform ${animateStats ? 'translate-y-0 opacity-100 delay-300' : 'translate-y-8 opacity-0'}`}>
-          <div className="flex justify-between items-start">
+        <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-500 text-sm">ASSIGNED COMPONENTS</p>
-              <h2 className="text-2xl font-bold">172,000</h2>
-              <p className="text-green-500 text-sm mt-1">+3.2%</p>
+              <p className="text-sm text-yellow-600">This Year</p>
+              <p className="text-2xl font-bold text-yellow-800">{performanceMetrics.yearlyCompleted}</p>
+              <p className="text-xs text-yellow-600">Completed</p>
             </div>
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <ShoppingCart size={24} className="text-blue-500" />
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Charts Section */}
-      <div className="container mx-auto mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 px-4">
-        <div className={`bg-white p-6 rounded-lg shadow-md transition-all duration-700 ${animateCharts ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">REGISTER REPORT</h2>
-            <span className="text-gray-400">ⓘ</span>
-          </div>
-          <h3 className="text-2xl font-bold">{registeredData.count}</h3>
-          <p className="text-gray-500 text-sm">Complaints were registered</p>
-          
-          <div className="mt-6 h-48 relative">
-            {/* Simple dot graph visualization */}
-            <div className="flex h-full items-end justify-between">
-              {registeredData.monthlyCounts.map((count, index) => (
-                <div key={index} className="relative flex flex-col items-center">
-                  <div 
-                    className="w-3 h-3 rounded-full bg-blue-500 mb-1 transition-all duration-1000"
-                    style={{
-                      transform: animateCharts ? 'scale(1)' : 'scale(0)',
-                      transitionDelay: `${300 + index * 100}ms`
-                    }}
-                  />
-                  <div className="text-xs text-gray-400">
-                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index].substring(0, 3)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        <div className={`bg-white p-6 rounded-lg shadow-md transition-all duration-700 ${animateCharts ? 'opacity-100 delay-200' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">SEMESTER REPORT</h2>
-            <span className="text-gray-400">ⓘ</span>
-          </div>
-          <p className="text-gray-500 text-sm">Solved and Unsolved Complaints</p>
-          
-          <div className="mt-6 flex justify-center h-48">
-            <div className="relative w-48 h-48">
-              {/* Simple donut chart */}
-              <svg viewBox="0 0 100 100" className="w-full h-full transform transition-transform duration-1000" style={{ transform: animateCharts ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
-                <circle 
-                  cx="50" cy="50" r="40" 
-                  fill="transparent" 
-                  stroke="#3b82f6" 
-                  strokeWidth="20" 
-                  strokeDasharray={`${semesterData.solved} ${100 - semesterData.solved}`} 
-                  strokeDashoffset="25"
-                  className="transition-all duration-1000"
-                  style={{ opacity: animateCharts ? 1 : 0 }}
-                />
-                <circle 
-                  cx="50" cy="50" r="40" 
-                  fill="transparent" 
-                  stroke="#ec4899" 
-                  strokeWidth="20" 
-                  strokeDasharray={`${semesterData.unsolved} ${100 - semesterData.unsolved}`} 
-                  strokeDashoffset={`${100 - semesterData.solved + 25}`}
-                  className="transition-all duration-1000 delay-300"
-                  style={{ opacity: animateCharts ? 1 : 0 }}
-                />
-                <circle 
-                  cx="50" cy="50" r="40" 
-                  fill="transparent" 
-                  stroke="#8b5cf6" 
-                  strokeWidth="20" 
-                  strokeDasharray={`${semesterData.notched} ${100 - semesterData.notched}`} 
-                  strokeDashoffset={`${100 - semesterData.solved - semesterData.unsolved + 25}`}
-                  className="transition-all duration-1000 delay-500"
-                  style={{ opacity: animateCharts ? 1 : 0 }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-16 h-16 bg-white rounded-full"></div>
-              </div>
-            </div>
-            
-            <div className="ml-4 flex flex-col justify-center">
-              <div className="flex items-center mb-2">
-                <div className="w-3 h-3 bg-blue-500 mr-2"></div>
-                <span className="text-sm">Solved</span>
-              </div>
-              <div className="flex items-center mb-2">
-                <div className="w-3 h-3 bg-pink-500 mr-2"></div>
-                <span className="text-sm">Unsolved</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-purple-500 mr-2"></div>
-                <span className="text-sm">Notched</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Attendance and Map Section */}
-      <div className="container mx-auto mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6 px-4 mb-8">
-        <div className={`bg-white p-6 rounded-lg shadow-md transition-all duration-700 ${animateCharts ? 'opacity-100 delay-400' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Attendance</h2>
-            <button className="text-blue-500 text-sm">View Status</button>
-          </div>
-          
-          <div className="mt-4">
-            <div className="flex items-center mb-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-              <span>{attendanceData.onTime} On Time</span>
-            </div>
-            <div className="flex items-center mb-3">
-              <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-              <span>{attendanceData.late} Late Attendance</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
-              <span>{attendanceData.notPresent} Not Present</span>
-            </div>
-          </div>
-          
-          <div className="mt-8 flex justify-center">
-            <div className="relative w-32 h-32">
-              <svg viewBox="0 0 100 100" className="w-full h-full transform rotate-270">
-                <circle cx="50" cy="50" r="45" fill="transparent" stroke="#f3f4f6" strokeWidth="10" />
-                <circle 
-                  cx="50" cy="50" r="45" 
-                  fill="transparent" 
-                  stroke="#3b82f6" 
-                  strokeWidth="10" 
-                  strokeDasharray={`${(attendanceData.onTime / (attendanceData.onTime + attendanceData.late + attendanceData.notPresent)) * 283} 283`} 
-                  strokeDashoffset="0"
-                  className="transition-all duration-1500"
-                  style={{ 
-                    strokeDasharray: animateCharts ? `${(attendanceData.onTime / (attendanceData.onTime + attendanceData.late + attendanceData.notPresent)) * 283} 283` : "0 283" 
-                  }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-bold">2/{attendanceData.onTime + attendanceData.late + attendanceData.notPresent}</span>
-                <span className="text-xs">This Month Leave</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className={`bg-white p-6 rounded-lg shadow-md transition-all duration-700 ${animateCharts ? 'opacity-100 delay-600' : 'opacity-0'}`}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Location of the All user</h2>
-          </div>
-          
-          <div className="h-64 bg-blue-50 rounded-lg relative overflow-hidden">
-            {/* Placeholder for map */}
-            <div className="absolute inset-0 bg-blue-100 opacity-70"></div>
-            <div className="absolute inset-0 grid grid-cols-8 grid-rows-6">
-              {Array(48).fill(0).map((_, i) => (
-                <div key={i} className="border border-blue-200 border-opacity-50"></div>
-              ))}
-            </div>
-            
-            {/* Marker animation */}
-            <div 
-              className="absolute w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center transition-all duration-1000"
-              style={{
-                top: '40%',
-                left: '60%',
-                transform: animateCharts ? 'scale(1)' : 'scale(0)',
-                boxShadow: '0 0 0 rgba(59, 130, 246, 0.5)',
-                animation: animateCharts ? 'pulse 2s infinite' : 'none'
-              }}
-            >
-              <MapPin size={16} className="text-white" />
-            </div>
-            
-            <style jsx>{`
-              @keyframes pulse {
-                0% {
-                  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
-                }
-                70% {
-                  box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-                }
-                100% {
-                  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-                }
-              }
-            `}</style>
+            <Award className="h-8 w-8 text-yellow-500" />
           </div>
         </div>
       </div>
     </div>
   );
-}
+        
+      case 'recent':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+            <div className="space-y-3">
+              {recentActivity.map((complaint) => (
+                <div key={complaint.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium truncate">{complaint.description}</p>
+                    <p className="text-xs text-gray-500">{complaint.customerName}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      complaint.workingStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                      complaint.workingStatus === 'processing' || complaint.workingStatus === 'accept' ? 'bg-blue-100 text-blue-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {complaint.workingStatus}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {complaint.updatedAt ? new Date(complaint.updatedAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+        
+      case 'priority':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold mb-4">Priority Breakdown</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                  <span className="font-medium">High Priority</span>
+                </div>
+                <span className="text-2xl font-bold text-red-600">{priorityBreakdown.high}</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                  <span className="font-medium">Medium Priority</span>
+                </div>
+                <span className="text-2xl font-bold text-yellow-600">{priorityBreakdown.medium}</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                  <span className="font-medium">Low Priority</span>
+                </div>
+                <span className="text-2xl font-bold text-green-600">{priorityBreakdown.low}</span>
+              </div>
+            </div>
+          </div>
+        );
+        
+      case 'trends':
+        return (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold mb-4">6-Month Trends</h3>
+            <div className="h-64 flex items-end justify-between space-x-2">
+              {trendData.map((data) => (
+                <div key={data.month} className="flex-1 flex flex-col items-center">
+                  <div className="w-full space-y-1 flex flex-col-reverse">
+                    <div 
+                      className="bg-green-500 rounded-t"
+                      style={{ height: `${(data.completed / 30) * 100}px` }}
+                    ></div>
+                    <div 
+                      className="bg-orange-500 rounded-t"
+                      style={{ height: `${(data.pending / 30) * 100}px` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs mt-2 font-medium">{data.month}</p>
+                  <div className="text-xs text-gray-500 text-center">
+                    <div className="text-green-600">{data.completed}</div>
+                    <div className="text-orange-600">{data.pending}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center space-x-4 text-xs">
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span>Completed</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span>Pending</span>
+              </div>
+            </div>
+          </div>
+        );
+        
+      default:
+        return null;
+    }
+  };
+  
+  return (
+    <>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Mechanic Dashboard</h1>
+      <MechanicInvoiceGenerator 
+      mechanicData={employeeData} 
+      complaints={complaints}
+      selectedPeriod={statusFilter === 'all' ? 'All Time' : statusFilter}
+    />
+      </div>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <motion.div
+          className="bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ 
+            opacity: animateStats ? 1 : 0, 
+            y: animateStats ? 0 : 20 
+          }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">PENDING TASKS</p>
+              <h2 className="text-2xl font-bold">{stats.pending}</h2>
+              <p className="text-amber-500 text-sm mt-1">Needs attention</p>
+            </div>
+            <div className="bg-amber-100 p-2 rounded-lg">
+              <Clock size={24} className="text-amber-500" />
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          className="bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ 
+            opacity: animateStats ? 1 : 0, 
+            y: animateStats ? 0 : 20 
+          }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">IN PROGRESS</p>
+              <h2 className="text-2xl font-bold">{stats.inProgress}</h2>
+              <p className="text-blue-500 text-sm mt-1">Currently working</p>
+            </div>
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <Tool size={24} className="text-blue-500" />
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          className="bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ 
+            opacity: animateStats ? 1 : 0, 
+            y: animateStats ? 0 : 20 
+          }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">COMPLETED</p>
+              <h2 className="text-2xl font-bold">{stats.completed}</h2>
+              <p className="text-green-500 text-sm mt-1">Successfully resolved</p>
+            </div>
+            <div className="bg-green-100 p-2 rounded-lg">
+              <CheckCircle size={24} className="text-green-500" />
+            </div>
+          </div>
+        </motion.div>
+        
+        <motion.div
+          className="bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ 
+            opacity: animateStats ? 1 : 0, 
+            y: animateStats ? 0 : 20 
+          }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">TOTAL ASSIGNED</p>
+              <h2 className="text-2xl font-bold">{stats.total}</h2>
+              <p className="text-gray-500 text-sm mt-1">All complaints</p>
+            </div>
+            <div className="bg-gray-100 p-2 rounded-lg">
+              <AlertCircle size={24} className="text-gray-500" />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+      
+      {/* Data Visualization with Alternative Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Status chart - Takes 1/3 width on large screens */}
+        <motion.div
+          className="bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: animateCharts ? 1 : 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          <StatusChart 
+            pending={stats.pending} 
+            inProgress={stats.inProgress} 
+            completed={stats.completed} 
+            animate={animateCharts}
+          />
+        </motion.div>
+        
+        <motion.div
+          className="lg:col-span-2 bg-white p-4 rounded-lg shadow-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: animateCharts ? 1 : 0 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          {/* Navigation Tabs */}
+          <div className="flex space-x-1 mb-4 bg-gray-100 p-1 rounded-lg">
+            {[
+              { key: 'performance', label: 'Performance', icon: TrendingUp },
+              { key: 'recent', label: 'Recent', icon: Clock },
+              { key: 'priority', label: 'Priority', icon: AlertCircle },
+              { key: 'trends', label: 'Trends', icon: BarChart3 }
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveView(key)}
+                className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                  activeView === key
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-600 hover:text-blue-600'
+                }`}
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          
+          {/* Alternative Content */}
+          {renderAlternativeContent()}
+        </motion.div>
+      </div>
+      
+      {/* Daily work summary */}
+      <motion.div
+        className="bg-white p-6 rounded-lg shadow-md mb-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: animateCharts ? 1 : 0 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+      >
+        <h2 className="text-lg font-semibold mb-4">Daily Work Summary</h2>
+        <ComplaintStatistics complaints={complaints as any} />
+      </motion.div>
+    </>
+  );
+};
+
+export default MechanicDashboard;

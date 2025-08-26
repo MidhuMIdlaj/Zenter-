@@ -2,24 +2,39 @@ import axios, { AxiosResponse } from "axios";
 // import createAxiosInstance from "../axiosInstance";
 import { Admin } from "../../types/dashboard";
 
-
 interface ForgotPasswordFormData {
   email: string;
   otp?: string;
   password?: string;
 }
 
+export interface AdminResponse {
+  success: boolean;
+  message: string;
+  statusCode: number;
+  data: {
+    accessToken: string;
+    email: string;
+    id: string;
+    role: string;
+  };
+}
+
+const API_BASE_UR = `${import.meta.env.VITE_API_BASE_URL}/admin`;
+
+
 export const AdminLoginApi = async (
     email: string,
     password: string
-  ): Promise<AxiosResponse<Admin>> => {
+  ): Promise<AxiosResponse<AdminResponse>> => {
     try {
-      const response = await axios.post<Admin>(
-        "http://localhost:5000/api/admin/login",
+      const response = await axios.post<AdminResponse>(
+        `${API_BASE_UR}/login`,
         { email, password },
         { withCredentials: true }
       );
-      return response;
+      console.log(response, "response from admin login api");
+      return response
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
         return error.response;
@@ -34,7 +49,7 @@ export const AdminLoginApi = async (
   ): Promise<AxiosResponse<ForgotPasswordFormData>> => {
     try {
       const response = await axios.post<ForgotPasswordFormData>(
-        "http://localhost:5000/api/admin/requestForgotPassword",
+        `${API_BASE_UR}/requestForgotPassword`,
         { email },
         { withCredentials: true }
       );
@@ -53,7 +68,7 @@ export const AdminLoginApi = async (
   ): Promise<AxiosResponse<ForgotPasswordFormData>> => {
     try {
       const response = await axios.post<ForgotPasswordFormData>(
-        "http://localhost:5000/api/admin/verifyOtp",
+        `${API_BASE_UR}/verifyOtp`,
         { email, otp },
         { withCredentials: true }
       );
@@ -72,7 +87,7 @@ export const AdminLoginApi = async (
   ): Promise<AxiosResponse<ForgotPasswordFormData>> => {
     try {
       const response = await axios.post<ForgotPasswordFormData>(
-        "http://localhost:5000/api/admin/resetPassword",
+        `${API_BASE_UR}/resetPassword`,
         { email, password },
         { withCredentials: true }
       );

@@ -1,19 +1,15 @@
 import { useSelector } from 'react-redux';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { RootState } from '../store/Store';
-
 
 const AdminProtectedRoute = () => {
   const location = useLocation();
-  const { isAuthenticated, isLoading, adminData } = useSelector((state: RootState) => ({
-    isAuthenticated: state.adminAuth.isAuthenticated,
-    isLoading: state.adminAuth.isLoading,
-    adminData: state.adminAuth.adminData
+  const { isAuthenticated, isLoading, adminData } = useSelector((state: any) => ({
+    isAuthenticated: state.adminAuth?.isAuthenticated,
+    isLoading: state.adminAuth?.isLoading,
+    adminData: state.adminAuth?.adminData
   }));
 
-   console.log(isAuthenticated, "isAuthenticated")
   if (!isLoading && !isAuthenticated && !adminData) {
-    console.log('Detected corrupted auth state, forcing logout');
     return <Navigate to="/admin-login" state={{ from: location }} replace />;
   }
 
@@ -29,11 +25,10 @@ const AdminProtectedRoute = () => {
   }
 
   if (!isAuthenticated) {
-    console.log('User is not authenticated, redirecting to login...');
     return <Navigate to="/admin-login" state={{ from: location }} replace />;
   }
+  
   return <Outlet />;
 };
-
 
 export default AdminProtectedRoute;

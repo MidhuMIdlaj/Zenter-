@@ -28,6 +28,8 @@ import {
 import { useSelector } from "react-redux";
 import { RootState } from "../../../../store/Store";
 import { Coordinate } from "recharts/types/util/types";
+import ActionButton from "../../../reusableComponent/ActionButton";
+import RefreshButton from "../../../reusableComponent/RefreshButton";
 
 const ComplaintTable: React.FC = () => {
   // State hooks
@@ -155,7 +157,9 @@ const ComplaintTable: React.FC = () => {
 
   const loadMechanics = async () => {
     try {
+      console.log("enter")
       const mechanics = await fetchAvailableMechanics();
+      console.log(mechanics, "23213")
       setMechanics(mechanics || []); // Ensure it's always an array
     } catch (error) {
       console.error("Failed to fetch mechanics:", error);
@@ -167,6 +171,7 @@ const ComplaintTable: React.FC = () => {
   const loadCustomerEmails = async () => {
     try {
       const customers = await fetchCustomerEmails();
+      console.log("Customer emails:", customers); // Debug log
       setCustomerEmails(customers || []); 
     } catch (error) {
       console.error("Failed to fetch customer emails:", error);
@@ -431,59 +436,40 @@ const ComplaintTable: React.FC = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden font-poppins">
-      {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200"
       >
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
-              <ClipboardList className="text-blue-600" size={24} />
-              Complaint Management
-            </h2>
-            <p className="text-gray-600 mt-1">
-              Register and manage customer complaints
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={loadComplaints}
-              className={`flex items-center gap-2 p-2 rounded-full ${
-                isRefreshing
-                  ? "text-blue-600"
-                  : "text-gray-600 hover:text-blue-600 hover:bg-gray-100"
-              }`}
-            >
-              <motion.div
-                animate={isRefreshing ? { rotate: 360 } : {}}
-                transition={{
-                  duration: 1,
-                  repeat: isRefreshing ? Infinity : 0,
-                  ease: "linear",
-                }}
-              >
-                <RefreshCw size={18} />
-              </motion.div>
-            </motion.button>
+       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+  <div>
+    <h2 className="text-2xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
+      <ClipboardList className="text-blue-600" size={24} />
+      Complaint Management
+    </h2>
+    <p className="text-gray-600 mt-1">
+      Register and manage customer complaints
+    </p>
+  </div>
 
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setIsEditMode(false);
-                setShowModal(true);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              <span>Add Complaint</span>
-            </motion.button>
-          </div>
-        </div>
+  <div className="flex items-center gap-3">
+    <RefreshButton
+      isRefreshing={isRefreshing}
+      onClick={loadComplaints}
+      title="Refresh Complaints"
+    />
+
+    <ActionButton
+      label="Add Complaint"
+      icon={Plus}
+      onClick={() => {
+        setIsEditMode(false);
+        setShowModal(true);
+      }}
+    />
+  </div>
+</div>
+
       </motion.div>
 
       {/* Search and Filter Section */}

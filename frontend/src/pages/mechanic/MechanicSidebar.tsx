@@ -11,7 +11,8 @@ import { markAllChatNotificationsRead, NotificationService } from '../../api/Not
 import { motion } from 'framer-motion';
 
 interface MechanicSidebarProps {
-  activePage: string; 
+  activePage: string;
+  unreadCount: number; 
 }
 
 const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
@@ -178,20 +179,11 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
         const newCount = unreadMessages + 1;
         setUnreadMessages(newCount);
         localStorage.setItem('coordinatorUnreadChat', newCount.toString());
-        
         // Add vibration
         if ('vibrate' in navigator) navigator.vibrate(200);
-        
-        showToast({
-          title: "New Chat Message",
-          message: notification?.message || `${notification.senderRole} sent a new message`,
-          type: "chat",
-          conversationId: notification?.conversationId
-        });
       }
     });
 
-    // Handle all chat notifications being marked as read
     newSocket.on('all_chat_notifications_read', () => {
       setUnreadMessages(0);
       localStorage.setItem('mechanicUnreadChat', '0');

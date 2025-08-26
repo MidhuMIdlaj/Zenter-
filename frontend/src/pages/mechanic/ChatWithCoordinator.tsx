@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ChevronLeft, Send, Search, Phone, Video, MoreVertical, Paperclip, Smile, Clock, CheckCheck, Users } from 'lucide-react';
+import { ChevronLeft, Send, Search, Paperclip, Smile, CheckCheck, Users, Clock } from 'lucide-react';
 import { fetchEmployees } from '../../api/admin/Employee';
 import { useSelector } from 'react-redux';
 import { selectEmployeeAuthData } from '../../store/selectors';
 import { ChatService } from '../../api/chatService.ts/chatApi';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react'; // Import emoji picker
 
-// Define types for our data structures
 interface Coordinator {
   id: number | string;
   name: string;
@@ -27,23 +27,52 @@ interface Coordinator {
   hasNewMessages?: boolean;
 }
 
+interface Attachment {
+  url: string;
+  type: string;
+  name: string;
+  size: number;
+}
+
 interface ChatMessage {
-  id: number | string;
+  id: string;
   senderId: string;
   receiverId: string;
-  text: string;
+  text?: string;
   time: string;
   isDelivered?: boolean;
   isRead?: boolean;
-  messageType?: 'text' | 'task' | 'urgent';
+  messageType?: 'text' | 'task' | 'urgent' | 'file';
   conversationId: string;
-  senderRole : string;
-  receiverRole : string;
+  senderRole: string;
+  receiverRole: string;
+  attachments?: Attachment[];
+  isOptimistic?: boolean;
 }
+
+const formatMessage = (message: any): ChatMessage => ({
+  ...message,
+  id: message._id || message.id || `temp-${Date.now()}`,
+  time: new Date(message.time).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  }),
+  isDelivered: message.isDelivered !== undefined ? message.isDelivered : false,
+  isRead: message.isRead !== undefined ? message.isRead : false,
+});
+
+const determineMessageType = (text: string | undefined, hasFiles: boolean): 'text' | 'task' | 'urgent' | 'file' => {
+  if (hasFiles) return 'file';
+  if (!text) return 'text';
+  if (/urgent|asap|immediately|important/i.test(text)) return 'urgent';
+  if (/task|todo|action item/i.test(text)) return 'task';
+  return 'text';
+};
 
 const ChatWithCoordinators: React.FC = () => {
   const [selectedCoordinator, setSelectedCoordinator] = useState<Coordinator | null>(null);
   const [newMessage, setNewMessage] = useState<string>('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -53,55 +82,120 @@ const ChatWithCoordinators: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [socketConnected, setSocketConnected] = useState<boolean>(false);
+  const [unreadConversations, setUnreadConversations] = useState<Record<string, number>>({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
   const socketRef = useRef<Socket | null>(null);
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const userId = employeeData?.id;
   const token = employeeData?.token;
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null); 
 
-  // Fetch coordinators
+  const addMessageSafely = (newMessage: ChatMessage) => {
+    setMessages((prev) => {
+      const exists = prev.some(
+        (msg) =>
+          msg.id === newMessage.id ||
+          (msg.conversationId === newMessage.conversationId &&
+           msg.senderId === newMessage.senderId &&
+           msg.text === newMessage.text &&
+           Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
+      );
+      if (exists) {
+        console.log(`Ignoring duplicate message: ${newMessage.id}`);
+        return prev;
+      }
+      console.log(`Adding new message: ${newMessage.id}`);
+      return [...prev, newMessage];
+    });
+  };
+
+  const updateOptimisticMessage = (tempId: string | number, realMessage: ChatMessage) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === tempId
+          ? {
+              ...formatMessage(realMessage),
+              id: realMessage.id || realMessage.id,
+              isDelivered: realMessage.isDelivered !== undefined ? realMessage.isDelivered : true,
+            }
+          : msg
+      )
+    );
+  };
+
+  // Handle clicking outside the emoji picker to close it
   useEffect(() => {
-    const loadCoordinators = async () => {
-      try {
-        setLoading(true);
-        const response = await fetchEmployees(page, 10);
-        const employees = response.data.employees || [];
-        
-        const fetchedCoordinators = employees
-          .filter((employee: any) => employee.position?.toLowerCase() === 'coordinator')
-          .map((employee: any) => ({
-            id: employee.id || Math.random() * 1000,
-            name: employee.employeeName || 'Unknown Coordinator',
-            avatar: employee.avatar || employee.employeeName?.slice(0, 2).toUpperCase() || '??',
-            lastMessage: employee.lastMessage || 'No messages yet',
-            time: employee.time
-            ? new Date(employee.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOnline: employee.status === 'available' || employee.status === 'busy',
-            unreadCount: employee.unreadCount || 0,
-            employeeId: employee.id || `COORD_${employee._id}`,
-            location: employee.address || 'Unknown Location',
-            status: employee.status || 'offline',
-            role: 'coordinator',
-            email: employee.email,
-            phone: employee.phone,
-            department: employee.department || 'Coordination',
-          }));
-
-        setCoordinators((prev) => (page === 1 ? fetchedCoordinators : [...prev, ...fetchedCoordinators]));
-        setHasMore(fetchedCoordinators.length === 10);
-      } catch (error) {
-        console.error('Failed to fetch coordinators:', error);
-      } finally {
-        setLoading(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
       }
     };
 
-    loadCoordinators();
-  }, [page]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
-  // Initialize Socket.IO connection with authentication
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false); 
+  };
+
+ useEffect(() => {
+  const loadCoordinators = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchEmployees(page, 10);
+      const employees = response.data.employees || [];
+      const coordinatorsWithMessages = await Promise.all(
+        employees
+          .filter((employee: any) => employee.position?.toLowerCase() === 'coordinator')
+          .map(async (employee: any) => {
+            const history = await ChatService.getChatHistory(
+              userId!, 
+              employee.id 
+            );
+            const lastMessage = history.length > 0 
+              ? history[history.length - 1] 
+              : null;
+
+            return {
+              id: employee.id || Math.random() * 1000,
+              name: employee.employeeName || 'Unknown Coordinator',
+              avatar: employee.avatar || employee.employeeName?.slice(0, 2).toUpperCase() || '??',
+              lastMessage: lastMessage?.text || 'No messages yet',
+              time: lastMessage 
+                ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              isOnline: employee.status === 'available' || employee.status === 'busy',
+              unreadCount: employee.unreadCount || 0,
+              employeeId: employee.id || `COORD_${employee._id}`,
+              location: employee.address || 'Unknown Location',
+              status: employee.status || 'offline',
+              role: 'coordinator',
+              email: employee.email,
+              phone: employee.phone,
+              department: employee.department || 'Coordination',
+            };
+          })
+      );
+
+      setCoordinators((prev) => (page === 1 ? coordinatorsWithMessages : [...prev, ...coordinatorsWithMessages]));
+      setHasMore(coordinatorsWithMessages.length === 10);
+    } catch (error) {
+      console.error('Failed to fetch coordinators:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (userId) loadCoordinators(); 
+ }, [page, userId]); 
+
   useEffect(() => {
     if (!userId || !token) return;
 
@@ -121,7 +215,9 @@ const ChatWithCoordinators: React.FC = () => {
     socketRef.current.on('connect', () => {
       console.log('Socket connected successfully');
       setSocketConnected(true);
-      socketRef.current?.emit('join_user_room', userId);
+      socketRef.current?.emit('join_user_room', userId, () => {
+        console.log(`Joined room for user: ${userId}`);
+      });
     });
 
     socketRef.current.on('connect_error', (error) => {
@@ -135,72 +231,97 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('new_message', (message: ChatMessage) => {
-    const conversationId = message.conversationId;
-    const isCurrentConversation = selectedCoordinator && 
-      conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
-    
-    if (!isCurrentConversation) {
-      setCoordinators(prev => prev.map(coord => {
-        if (coord.employeeId === message.senderId) {
-          return {
-            ...coord,
-            hasNewMessages: true,
-            unreadCount: (coord.unreadCount || 0) + 1,
-            lastMessage: message.text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-        }
-        return coord;
-      }));
-    }
+      console.log('Received new_message:', message);
+      const conversationId = message.conversationId;
+      const isCurrentConversation =
+        selectedCoordinator &&
+        conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
 
-    if (isCurrentConversation) {
-      const formattedMessage = {
+      if (!isCurrentConversation) {
+        console.log(`Updating unread count for conversation: ${conversationId}`);
+        setUnreadConversations((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || 0) + 1,
+        }));
+        setCoordinators((prev) =>
+          prev.map((coord) => {
+            if (coord.employeeId === message.senderId) {
+              return {
+                ...coord,
+                hasNewMessages: true,
+                unreadCount: (coord.unreadCount || 0) + 1,
+                lastMessage: message.text || 'File attachment',
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              };
+            }
+            return coord;
+          })
+        );
+      }
+
+      const formattedMessage = formatMessage({
         ...message,
-        time: new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, formattedMessage]);
-    }
-  });
-    // Add these inside your socket initialization (in the useEffect for socket)
-      
-  socketRef.current.on('message_delivered', ({ messageId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId ? { ...msg, isDelivered: true } : msg
-      )
-    );
-  });
+        id: message.id || message.id,
+      });
 
-  socketRef.current.on('message_read', ({ messageId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId ? { ...msg, isRead: true } : msg
-      )
-    );
-  });
+      setMessages((prev) => {
+        const optimisticIndex = prev.findIndex(
+          (msg) => msg.isOptimistic && msg.id === `temp-${message.id || message.id}`
+        );
+        if (optimisticIndex !== -1) {
+          console.log(`Replacing optimistic message: ${message.id || message.id}`);
+          const updatedMessages = [...prev];
+          updatedMessages[optimisticIndex] = formattedMessage;
+          return updatedMessages;
+        }
+        if (isCurrentConversation) {
+          addMessageSafely(formattedMessage);
+        }
+        return prev;
+      });
+    });
 
-  socketRef.current.on('messages_read', ({ conversationId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.conversationId === conversationId && !msg.isRead 
-          ? { ...msg, isRead: true } 
-          : msg
-      )
-    );
-  });
+    socketRef.current.on('message_delivered', ({ messageId }) => {
+      console.log('Message delivered:', messageId);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, isDelivered: true } : msg
+        )
+      );
+    });
 
-  socketRef.current.on('receive_typing', ({ conversationId, userId: typingUserId }) => {
-    if (
-      selectedCoordinator &&
-      conversationId === [userId, selectedCoordinator.employeeId].sort().join('_') &&
-      typingUserId !== userId
-    ) {
-      setIsTyping(true);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
-    }
-  });
+    socketRef.current.on('message_read', ({ messageId }) => {
+      console.log('Message read:', messageId);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, isRead: true } : msg
+        )
+      );
+    });
+
+    socketRef.current.on('messages_read', ({ conversationId }) => {
+      console.log('Messages read for conversation:', conversationId);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.conversationId === conversationId && !msg.isRead
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+    });
+
+    socketRef.current.on('receive_typing', ({ conversationId, userId: typingUserId }) => {
+      console.log('Typing event received:', { conversationId, typingUserId });
+      if (
+        selectedCoordinator &&
+        conversationId === [userId, selectedCoordinator.employeeId].sort().join('_') &&
+        typingUserId !== userId
+      ) {
+        setIsTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+      }
+    });
 
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -209,242 +330,138 @@ const ChatWithCoordinators: React.FC = () => {
   }, [userId, token, selectedCoordinator]);
 
   useEffect(() => {
-  if (!socketRef.current) return;
+    if (selectedCoordinator && userId) {
+      const loadChatHistory = async () => {
+        try {
+          const history = await ChatService.getChatHistory(userId, selectedCoordinator.employeeId);
+          const formattedMessages = history.map(formatMessage);
 
-  const handleNewMessage = (message: ChatMessage) => {
-    if (selectedCoordinator?.employeeId !== message.senderId) {
-      setCoordinators(prev => prev.map(coord => {
-        if (coord.employeeId === message.senderId) {
-          return {
-            ...coord,
-            hasNewMessages: true,
-            newMessagesCount: (coord.newMessagesCount || 0) + 1,
-            lastMessage: message.text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-        }
-        return coord;
-      }));
-    }
-  };
+          setMessages(formattedMessages);
 
-  socketRef.current.on('new_message', handleNewMessage);
-
-  return () => {
-    socketRef.current?.off('new_message', handleNewMessage);
-  };
-}, [selectedCoordinator]);
-  // Fetch chat history when a coordinator is selected
-  // Update the useEffect for socket initialization in ChatWithCoordinators
-useEffect(() => {
-  if (!userId || !token) return;
-
-  if (socketRef.current) {
-    socketRef.current.disconnect();
-  }
-
-  socketRef.current = io('http://localhost:5000', {
-    transports: ['websocket', 'polling'],
-    auth: { token },
-    withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-  });
-
-  socketRef.current.on('connect', () => {
-    console.log('Socket connected successfully');
-    setSocketConnected(true);
-    socketRef.current?.emit('join_user_room', userId);
-  });
-
-  socketRef.current.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    setSocketConnected(false);
-  });
-
-  socketRef.current.on('disconnect', () => {
-    console.log('Socket disconnected');
-    setSocketConnected(false);
-  });
-
-  socketRef.current.on('new_message', (message: ChatMessage) => {
-    const conversationId = message.conversationId;
-    const isCurrentConversation = selectedCoordinator && 
-      conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
-    
-    if (!isCurrentConversation) {
-      // Update unread count for the coordinator
-      setCoordinators(prev => prev.map(coord => {
-        if (coord.employeeId === message.senderId) {
-          return {
-            ...coord,
-            hasNewMessages: true,
-            unreadCount: (coord.unreadCount || 0) + 1,
-            lastMessage: message.text,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-        }
-        return coord;
-      }));
-    }
-
-    // Add the message to current chat if it's the active conversation
-    if (isCurrentConversation) {
-      const formattedMessage = {
-        ...message,
-        time: new Date(message.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages(prev => [...prev, formattedMessage]);
-    }
-  });
-
-  socketRef.current.on('message_delivered', ({ messageId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId ? { ...msg, isDelivered: true } : msg
-      )
-    );
-  });
-
-  socketRef.current.on('message_read', ({ messageId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === messageId ? { ...msg, isRead: true } : msg
-      )
-    );
-  });
-
-  socketRef.current.on('messages_read', ({ conversationId }) => {
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.conversationId === conversationId && !msg.isRead 
-          ? { ...msg, isRead: true } 
-          : msg
-      )
-    );
-  });
-
-  socketRef.current.on('receive_typing', ({ conversationId, userId: typingUserId }) => {
-    if (
-      selectedCoordinator &&
-      conversationId === [userId, selectedCoordinator.employeeId].sort().join('_') &&
-      typingUserId !== userId
-    ) {
-      setIsTyping(true);
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
-    }
-  });
-
-  return () => {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    if (socketRef.current) socketRef.current.disconnect();
-  };
-}, [userId, token, selectedCoordinator]);
-
-
-useEffect(() => {
-  if (selectedCoordinator && userId) {
-    const loadChatHistory = async () => {
-      try {
-        const history = await ChatService.getChatHistory(userId, selectedCoordinator.employeeId);
-        const formattedMessages = history.map((msg: any) => ({
-          ...msg,
-          time: new Date(msg.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }));
-        
-        setMessages(formattedMessages);
-
-        if (socketRef.current) {
-          socketRef.current.emit('mark_messages_read', {
-            conversationId: [userId, selectedCoordinator.employeeId].sort().join('_'),
-            userId: userId
-          });
-        }
-
-        setCoordinators(prev => prev.map(coord => {
-          if (coord.employeeId === selectedCoordinator.employeeId) {
-            return {
-              ...coord,
-              unreadCount: 0,
-              hasNewMessages: false
-            };
+          if (socketRef.current) {
+            socketRef.current.emit('mark_messages_read', {
+              conversationId: [userId, selectedCoordinator.employeeId].sort().join('_'),
+              userId: userId,
+            });
           }
-          return coord;
-        }));
-      } catch (error) {
-        console.error('Error loading chat history:', error);
-      }
-    };
-    
-    loadChatHistory();
-  }
-}, [selectedCoordinator, userId]);
 
-  // Scroll to the latest message
+          setCoordinators((prev) =>
+            prev.map((coord) => {
+              if (coord.employeeId === selectedCoordinator.employeeId) {
+                return {
+                  ...coord,
+                  unreadCount: 0,
+                  hasNewMessages: false,
+                };
+              }
+              return coord;
+            })
+          );
+          setUnreadConversations((prev) => ({
+            ...prev,
+            [[userId, selectedCoordinator.employeeId].sort().join('_')]: 0,
+          }));
+        } catch (error) {
+          console.error('Error loading chat history:', error);
+        }
+      };
+
+      loadChatHistory();
+    }
+  }, [selectedCoordinator, userId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Handle infinite scroll
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     if (scrollHeight - scrollTop <= clientHeight * 1.5 && hasMore && !loading) {
-      setPage(prev => prev + 1);
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(files);
+    if (socketRef.current && socketConnected && selectedCoordinator) {
+      socketRef.current.emit('typing', {
+        conversationId: [userId, selectedCoordinator.employeeId].sort().join('_'),
+        userId,
+      });
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedCoordinator || !userId) return;
+    if (!selectedCoordinator || !userId) return;
+    if (!newMessage.trim() && selectedFiles.length === 0) return;
 
-    const messageText = newMessage.trim();
     const conversationId = [userId, selectedCoordinator.employeeId].sort().join('_');
-    
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+
     const tempMessage: ChatMessage = {
-      id: Date.now(),
+      id: tempId,
       senderId: userId,
       receiverId: selectedCoordinator.employeeId,
-      text: messageText,
+      text: newMessage.trim() || undefined,
       time: new Date().toISOString(),
       isDelivered: false,
       isRead: false,
-      messageType: messageText.toLowerCase().includes('urgent') 
-        ? 'urgent' 
-        : messageText.toLowerCase().includes('task') 
-          ? 'task' 
-          : 'text',
+      messageType: determineMessageType(newMessage, selectedFiles.length > 0),
       conversationId,
-      senderRole : "mechanic",
-      receiverRole : "coordinator"
+      senderRole: 'mechanic',
+      receiverRole: 'coordinator',
+      attachments: selectedFiles.length > 0
+        ? selectedFiles.map((file) => ({
+            url: URL.createObjectURL(file),
+            type: file.type,
+            name: file.name,
+            size: file.size,
+          }))
+        : undefined,
+      isOptimistic: true,
     };
 
     try {
       setNewMessage('');
-      setMessages(prev => [...prev, {
-      ...tempMessage,
-      time: new Date(tempMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setShowEmojiPicker(false); // Close emoji picker on send
 
-      const savedMessage = await ChatService.sendMessage(tempMessage);
-      
+      setMessages((prev) => [
+        ...prev,
+        formatMessage(tempMessage),
+      ]);
+
+      console.log('Sending temp message:', tempMessage);
+      const savedMessage = await ChatService.sendMessage(tempMessage, selectedFiles);
+
+      console.log('Server-confirmed message:', savedMessage);
+      updateOptimisticMessage(tempId, savedMessage);
+
       if (socketRef.current) {
-      socketRef.current.emit("send_message", savedMessage, (deliveryConfirmation: any) => {
-        if (deliveryConfirmation?.success) {
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.id === tempMessage.id 
-                ? { ...msg, id: savedMessage.id, isDelivered: true }
-                : msg
-            )
-          );
-        }
-      });
-    }
+        socketRef.current.emit('send_message', savedMessage, (deliveryConfirmation: any) => {
+          if (deliveryConfirmation?.success) {
+            console.log('Delivery confirmation received:', savedMessage._id || savedMessage.id);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempId
+                  ? {
+                      ...formatMessage(savedMessage),
+                      id: savedMessage._id || savedMessage.id,
+                      isDelivered: true,
+                    }
+                  : msg
+              )
+            );
+          }
+        });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-      setNewMessage(messageText);
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      setNewMessage(tempMessage.text || '');
+      setSelectedFiles(selectedFiles);
     }
   };
 
@@ -457,7 +474,6 @@ useEffect(() => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
-    
     if (socketRef.current && socketConnected && selectedCoordinator) {
       socketRef.current.emit('typing', {
         conversationId: [userId, selectedCoordinator.employeeId].sort().join('_'),
@@ -466,42 +482,52 @@ useEffect(() => {
     }
   };
 
-  const filteredCoordinators = coordinators.filter(coordinator => {
-    const matchesSearch = coordinator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         coordinator.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredCoordinators = coordinators.filter((coordinator) => {
+    const matchesSearch =
+      coordinator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coordinator.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || coordinator.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return 'bg-green-500';
-      case 'busy': return 'bg-yellow-500';
-      case 'offline': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'available':
+        return 'bg-green-500';
+      case 'busy':
+        return 'bg-yellow-500';
+      case 'offline':
+        return 'bg-gray-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getMessageTypeStyle = (messageType?: string) => {
     switch (messageType) {
-      case 'urgent': return 'border-l-4 border-red-500 bg-red-50';
-      case 'task': return 'border-l-4 border-blue-500 bg-blue-50';
-      default: return '';
+      case 'urgent':
+        return 'border-l-4 border-red-500 bg-red-50';
+      case 'task':
+        return 'border-l-4 border-blue-500 bg-blue-50';
+      case 'file':
+        return 'border-l-4 border-green-500 bg-green-50';
+      default:
+        return '';
     }
   };
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh-12rem)]">
-      {/* Connection Status Indicator */}
-      <div className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${
-        socketConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-      }`}>
+      <div
+        className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${
+          socketConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}
+      >
         {socketConnected ? '🟢 Connected' : '🔴 Disconnected'}
       </div>
 
       {!selectedCoordinator ? (
         <div className="h-full flex flex-col">
-          {/* Header */}
           <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -509,15 +535,14 @@ useEffect(() => {
               </h2>
               <div className="flex items-center space-x-2">
                 <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                  {filteredCoordinators.filter(c => c.isOnline).length} Online
+                  {filteredCoordinators.filter((c) => c.isOnline).length} Online
                 </div>
                 <div className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-sm font-medium">
-                  {filteredCoordinators.filter(c => c.status === 'available').length} Available
+                  {filteredCoordinators.filter((c) => c.status === 'available').length} Available
                 </div>
               </div>
             </div>
 
-            {/* Search and Filters */}
             <div className="flex space-x-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
@@ -542,11 +567,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Coordinators List */}
-          <div 
-            className="flex-1 overflow-y-auto p-4 space-y-3" 
-            onScroll={handleScroll}
-          >
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" onScroll={handleScroll}>
             {loading && page === 1 ? (
               <div className="flex justify-center items-center h-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
@@ -554,7 +575,7 @@ useEffect(() => {
             ) : filteredCoordinators.length === 0 ? (
               <div className="text-center text-gray-500 py-10">No coordinators found</div>
             ) : (
-              filteredCoordinators.map(coordinator => (
+              filteredCoordinators.map((coordinator) => (
                 <div
                   key={coordinator.id}
                   className="group relative bg-white/70 backdrop-blur-sm hover:bg-white/90 rounded-xl p-4 cursor-pointer transform hover:scale-[1.02] transition-all duration-200 shadow-sm hover:shadow-md border border-white/50"
@@ -565,7 +586,11 @@ useEffect(() => {
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
                         <span className="text-white font-semibold text-lg">{coordinator.avatar}</span>
                       </div>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(coordinator.status)} rounded-full border-2 border-white`}></div>
+                      <div
+                        className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(
+                          coordinator.status
+                        )} rounded-full border-2 border-white`}
+                      ></div>
                     </div>
                     <div className="flex-1 ml-4 min-w-0">
                       <div className="flex items-center justify-between">
@@ -587,9 +612,11 @@ useEffect(() => {
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-gray-500">{coordinator.time}</span>
-                          {coordinator.unreadCount! > 0 && (
+                          {unreadConversations[
+                            [userId, coordinator.employeeId].sort().join('_')
+                          ] > 0 && (
                             <div className="bg-blue-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-medium">
-                              {coordinator.unreadCount}
+                              {unreadConversations[[userId, coordinator.employeeId].sort().join('_')]}
                             </div>
                           )}
                         </div>
@@ -609,7 +636,6 @@ useEffect(() => {
         </div>
       ) : (
         <div className="h-full flex flex-col">
-          {/* Chat Header */}
           <div className="bg-white/90 backdrop-blur-sm border-b border-blue-100 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -624,7 +650,11 @@ useEffect(() => {
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                       <span className="text-white font-medium">{selectedCoordinator.avatar}</span>
                     </div>
-                    <div className={`absolute -bottom-1 -right-1 w-3 h-3 ${getStatusColor(selectedCoordinator.status)} rounded-full border-2 border-white`}></div>
+                    <div
+                      className={`absolute -bottom-1 -right-1 w-3 h-3 ${getStatusColor(
+                        selectedCoordinator.status
+                      )} rounded-full border-2 border-white`}
+                    ></div>
                   </div>
                   <div className="ml-3">
                     <h3 className="font-semibold text-gray-800">{selectedCoordinator.name}</h3>
@@ -639,21 +669,9 @@ useEffect(() => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <button className="p-2 rounded-full hover:bg-blue-100 transition-colors">
-                  <Phone size={18} className="text-gray-600" />
-                </button>
-                <button className="p-2 rounded-full hover:bg-blue-100 transition-colors">
-                  <Video size={18} className="text-gray-600" />
-                </button>
-                <button className="p-2 rounded-full hover:bg-blue-100 transition-colors">
-                  <MoreVertical size={18} className="text-gray-600" />
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* Messages Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-blue-50/50 to-indigo-50/30">
             {messages.map((message, index) => (
               <div
@@ -664,37 +682,69 @@ useEffect(() => {
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
                     message.senderId === userId
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md'
-                      : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(message.messageType)}`
+                      ? `bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md ${
+                          message.isOptimistic ? 'opacity-70' : ''
+                        }`
+                      : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(
+                          message.messageType
+                        )}`
                   }`}
                 >
-                  <p className="break-words">{message.text}</p>
+                  {message.text && <p className="break-words">{message.text}</p>}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {message.attachments.map((attachment, idx) => (
+                        <div key={idx} className="border-t pt-2">
+                          {attachment.type.startsWith('image/') ? (
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name}
+                              className="max-w-full rounded-lg"
+                            />
+                          ) : (
+                            <a
+                              href={attachment.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center space-x-2 text-sm text-blue-500 hover:underline"
+                            >
+                              <Paperclip size={14} />
+                              <span>{attachment.name}</span>
+                              <span>({Math.round(attachment.size / 1024)} KB)</span>
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div
                     className={`flex items-center justify-between mt-2 text-xs ${
                       message.senderId === userId ? 'text-blue-100' : 'text-gray-500'
                     }`}
                   >
                     <span>{message.time}</span>
-                  {message.senderId === userId && (
-                    <div className="flex items-center ml-2 space-x-0.5">
-                      {!message.isDelivered ? (
-                        <>
-                          <CheckCheck size={14} className="text-red-500" />
-                          <CheckCheck size={14} className="text-red-500 -ml-1" />
-                        </>
-                      ) : message.isRead ? (
-                        <>
-                          <CheckCheck size={14} className="text-green-500" />
-                          <CheckCheck size={14} className="text-green-500 -ml-1" />
-                        </>
-                      ) : (
-                        <>
-                          <CheckCheck size={14} className="text-gray-500" />
-                          <CheckCheck size={14} className="text-gray-500 -ml-1" />
-                        </>
-                      )}
-                    </div>
-                  )}
+                    {message.senderId === userId && (
+                      <div className="flex items-center ml-2 space-x-0.5">
+                        {message.isOptimistic ? (
+                          <Clock size={14} className="text-gray-400" />
+                        ) : !message.isDelivered ? (
+                          <>
+                            <CheckCheck size={14} className="text-red-500" />
+                            <CheckCheck size={14} className="text-red-500 -ml-1" />
+                          </>
+                        ) : message.isRead ? (
+                          <>
+                            <CheckCheck size={14} className="text-green-500" />
+                            <CheckCheck size={14} className="text-green-500 -ml-1" />
+                          </>
+                        ) : (
+                          <>
+                            <CheckCheck size={14} className="text-gray-500" />
+                            <CheckCheck size={14} className="text-gray-500 -ml-1" />
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -704,8 +754,14 @@ useEffect(() => {
                 <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-gray-100">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.1s' }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.2s' }}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -713,34 +769,63 @@ useEffect(() => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input */}
           <div className="bg-white/90 backdrop-blur-sm border-t border-blue-100 p-4">
             <div className="flex items-center space-x-3">
-              <button className="p-2 rounded-full hover:bg-blue-100 transition-colors">
-                <Paperclip size={20} className="text-gray-500" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  <Paperclip size={20} className="text-gray-500" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx"
+                  className="hidden"
+                />
+              </div>
               <div className="flex-1 relative">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
-                  placeholder={socketConnected ? "Type your message..." : "Connecting..."}
+                  placeholder={socketConnected ? 'Type your message...' : 'Connecting...'}
                   disabled={!socketConnected}
                   className="w-full px-4 py-3 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-50"
                 />
-                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                <button
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                >
                   <Smile size={18} className="text-gray-500" />
                 </button>
+                {showEmojiPicker && (
+                  <div ref={emojiPickerRef} className="absolute bottom-12 right-0 z-10">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                  </div>
+                )}
               </div>
               <button
                 onClick={handleSendMessage}
-                disabled={!newMessage.trim() || !socketConnected}
+                disabled={(!newMessage.trim() && selectedFiles.length === 0) || !socketConnected}
                 className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg"
               >
                 <Send size={18} />
               </button>
             </div>
+            {selectedFiles.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="bg-gray-100 px-3 py-1 rounded-full text-sm text-gray-700">
+                    {file.name} ({Math.round(file.size / 1024)} KB)
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex space-x-2 mt-3">
               <button
                 onClick={() => setNewMessage('Please provide project status update')}

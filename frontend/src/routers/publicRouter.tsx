@@ -1,50 +1,35 @@
-import { Navigate, RouteObject } from 'react-router-dom';
+import { RouteObject } from 'react-router-dom';
 import Login from '../pages/admin/Login';
 import EmployeeLogin from '../pages/coordinator/LoginPage';
-import ResetPasswordEmai from '../pages/coordinator/ResetPasswordEmai';
-import AdminForgotPassword from '../pages/admin/ForgotPasswor'; 
+import ResetPasswordEmail from '../pages/coordinator/ResetPasswordEmai';
+import AdminForgotPassword from '../pages/admin/ForgotPasswor';
 import PublicOnlyRoute from '../components/PublicOnlyRoute';
+import VideoCallJoinPage from '../components/video-call/VideoCallJoinPage';
 
 const publicRoutes: RouteObject[] = [
   {
     path: '/admin-login',
-    element: (
-      <PublicOnlyRoute>
-        <Login />
-      </PublicOnlyRoute>
-    ),
+    element: <PublicOnlyRoute><Login /></PublicOnlyRoute>,
   },
   {
     path: '/employee-login',
-    element: (
-      <PublicOnlyRoute>
-        <EmployeeLogin />
-      </PublicOnlyRoute>
-    ),
+    element: <PublicOnlyRoute><EmployeeLogin /></PublicOnlyRoute>,
   },
   {
     path: '/reset-password',
-    element: (
-      <PublicOnlyRoute>
-        <ResetPasswordEmai />
-      </PublicOnlyRoute>
-    ),
+    element: <PublicOnlyRoute><ResetPasswordEmail /></PublicOnlyRoute>,
   },
   {
     path: '/admin/forgot-password',
-    element: (
-      <PublicOnlyRoute>
-        <AdminForgotPassword />
-      </PublicOnlyRoute>
-    ),
+    element: <PublicOnlyRoute><AdminForgotPassword /></PublicOnlyRoute>,
   },
   {
     path: '/login/forgot-password',
-    element: <Navigate to="/admin/forgot-password" replace />,
+    element: <PublicOnlyRoute><AdminForgotPassword /></PublicOnlyRoute>,
   },
-  {
-    path: '/admin-login',
-    element: <Navigate to="/admin-login" replace />,
+   {
+    path: '/video-call',
+    element: <VideoCallJoinPage />,
   },
 ];
 

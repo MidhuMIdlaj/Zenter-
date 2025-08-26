@@ -1,24 +1,22 @@
 import axios, { AxiosResponse } from "axios";
-import { EmployeeFormData, ResetPasswordEmailFormData } from "../../types/dashboard";
+import {  ResetPasswordEmailFormData } from "../../types/dashboard";
+import  {responseData}  from "../../types/dashboard";
 
 
-interface  responseData {
-  message: string;
-  token: string;
-  emailId : string;
-  position :  string;
-}
+const BASE_URL = `${import.meta.env.VITE_API_BASE_URL}/employee`;
+;
 
 export const EmployeeLoginApi = async (
     email: string,
     password: string
-  ): Promise<AxiosResponse<EmployeeFormData>> => {
+  ): Promise<AxiosResponse<responseData>> => {
     try {
-      const response = await axios.post<EmployeeFormData>(
-        "http://localhost:5000/api/employee/loginEmployee",
+      const response = await axios.post<responseData>(
+        `${BASE_URL}/loginEmployee`,
         { email, password },
         { withCredentials: true }
       );
+      console.log(response , "123")
       return response;
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
@@ -33,7 +31,7 @@ export const ResetPasswordEmailApi = async (
 ): Promise<AxiosResponse<ResetPasswordEmailFormData>> => {
     try {
       const response = await axios.post<ResetPasswordEmailFormData>(
-        "http://localhost:5000/api/employee/requestResetPassword",
+        `${BASE_URL}/requestResetPassword`,
         { email},
         { withCredentials: true }
       );
@@ -52,7 +50,7 @@ export const ResetPasswordEmailApi = async (
 ): Promise<AxiosResponse<ResetPasswordEmailFormData>> => {
     try {
       const response = await axios.post<ResetPasswordEmailFormData>(
-        "http://localhost:5000/api/employee/ResendOtp",
+        `${BASE_URL}/verifyOtp`,
         { email , otp},
         { withCredentials: true }
       );
@@ -71,7 +69,7 @@ export const ResetPasswordEmailApi = async (
 ): Promise<AxiosResponse<ResetPasswordEmailFormData>> => {
     try {
       const response = await axios.post<ResetPasswordEmailFormData>(
-        "http://localhost:5000/api/employee/resetPassword",
+        `${BASE_URL}/resetPassword`,
         { email , password},
         { withCredentials: true }
       );

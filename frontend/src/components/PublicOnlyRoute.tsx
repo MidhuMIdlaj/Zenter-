@@ -3,13 +3,16 @@ import { useSelector } from 'react-redux';
 import { ReactNode } from 'react';
 import { selectAdminAuthData, selectEmployeeAuthData } from '../store/selectors';
 
-const PublicOnlyRoute = ({ children }: { children: ReactNode }) => {
-    console.log("1")
+interface PublicOnlyRouteProps {
+  children: ReactNode;
+}
+
+const PublicOnlyRoute = ({ children }: PublicOnlyRouteProps) => {
   const { isAuthenticated: isAdminAuthenticated, isLoading: isLoadingAdmin } = 
     useSelector(selectAdminAuthData);
-  const { isAuthenticated: isEmployeeAuthenticated, isLoading: isLoadingEmployee, position } = 
+  const { isAuthenticated: isEmployeeAuthenticated, employeeData } = 
     useSelector(selectEmployeeAuthData);
-
+ let isLoadingEmployee = false;
   if (isLoadingAdmin || isLoadingEmployee) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -24,10 +27,9 @@ const PublicOnlyRoute = ({ children }: { children: ReactNode }) => {
   if (isAdminAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
   }
-  console.log(isEmployeeAuthenticated, "isEmployeeAuthenticated")
+  
   if (isEmployeeAuthenticated) {
-    console.log("2")
-    const redirectPath = position === 'mechanic' 
+    const redirectPath = employeeData?.position === 'mechanic' 
       ? '/mechanic/dashboard' 
       : '/coordinator/dashboard';
     return <Navigate to={redirectPath} replace />;

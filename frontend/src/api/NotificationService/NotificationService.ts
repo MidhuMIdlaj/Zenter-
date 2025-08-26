@@ -1,6 +1,7 @@
 import axiosInstance from '../axiosInstance';
 
-const API_BASE_URL = 'http://localhost:5000/api/notification';
+const API_BASE_URL =  `${import.meta.env.VITE_API_BASE_URL}/notification`;
+
 
 export const NotificationService = {
   getNotificationsForUser: async (userId: string) => {
@@ -27,7 +28,7 @@ export const NotificationService = {
 
   markChatNotificationAsRead: async (notificationId: string, conversationId: string) => {
     try {
-      console.log("1123")
+      console.log('Marking chat notification as read:', { notificationId, conversationId });
       const response = await axiosInstance.post(
         `${API_BASE_URL}/notifications/chat/${notificationId}/mark-read/${conversationId}`
       );
@@ -38,7 +39,6 @@ export const NotificationService = {
     }
   },
 
-  // Create new chat notification (for socket events)
   createChatNotification: async (
     recipientId: string,
     senderId: string,
@@ -75,12 +75,12 @@ export const NotificationService = {
           validateStatus: (status: number) => status < 500
         }
       );
-      console.log(response, "234234234")
-       if (response.data.success) {
-      return response.data;
-    } else {
-      throw new Error(response.data.error?.message || 'Failed to fetch unread chat notifications');
-    }
+      console.log('getUnreadChatNotifications response:', response.data);
+      if (response.data.success) {
+        return response.data;
+      } else {
+        throw new Error(response.data.error?.message || 'Failed to fetch unread chat notifications');
+      }
     } catch (error) {
       console.error('Error fetching unread chat notifications:', error);
       throw error;
@@ -88,16 +88,13 @@ export const NotificationService = {
   }
 };
 
-
-// In your ChatService or NotificationService file:
-
-// Get unread chat notifications count
 export const getUnreadChatCount = async (userId: string, role: string) => {
   try {
     const response = await axiosInstance.get(
       `${API_BASE_URL}/notifications/unread-chat/${userId}`,
       { params: { role } }
     );
+    console.log('getUnreadChatCount response:', response.data);
     return response.data.count || 0;
   } catch (error) {
     console.error("Error fetching unread count:", error);
@@ -105,13 +102,14 @@ export const getUnreadChatCount = async (userId: string, role: string) => {
   }
 };
 
-// Mark all chat notifications as read
 export const markAllChatNotificationsRead = async (userId: string) => {
   try {
+    console.log('Calling markAllChatNotificationsRead for user:', userId);
     const response = await axiosInstance.post(
       `${API_BASE_URL}/notifications/mark-all-chat-read`,
       { userId }
     );
+    console.log('markAllChatNotificationsRead response:', response.data);
     return response.data.success;
   } catch (error) {
     console.error("Error marking notifications read:", error);

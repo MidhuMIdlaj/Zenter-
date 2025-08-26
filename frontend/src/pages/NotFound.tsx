@@ -9,7 +9,7 @@ const NotFound = () => {
         Go back to home
       </Link>
         
-      <style jsx>{`
+      <style >{`
         .not-found-page {
           display: flex;
           flex-direction: column;

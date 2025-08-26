@@ -1,3 +1,5 @@
+import { StatusCode } from "../../shared/enums/statusCode";
+
 // domain/errors/AppError.ts
 export class AppError extends Error {
     statusCode: number;
@@ -12,7 +14,7 @@ export class AppError extends Error {
   
   export class ValidationError extends AppError {
     constructor(message: string) {
-      super(message, 400);
+      super(message, StatusCode.BAD_REQUEST);
     }
   }
   
@@ -24,12 +26,12 @@ export class AppError extends Error {
   
   export class NotFoundError extends AppError {
     constructor(message: string) {
-      super(message, 404); 
+      super(message, StatusCode.NOT_FOUND); 
     }
   }
   
   export class ServerError extends AppError {
     constructor(message: string = "Internal server error") {
-      super(message, 500); 
+      super(message, StatusCode.INTERNAL_SERVER_ERROR); 
     }
   }

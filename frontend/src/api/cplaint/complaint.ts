@@ -17,7 +17,8 @@ export interface StatusType {
 }
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/common';
+const API_URL =  `${import.meta.env.VITE_API_BASE_URL}/common`;
+;
 
 export const findEmailForInitialCreation = async (email: string) => {
   try {
@@ -58,10 +59,10 @@ export const fetchAvailableMechanics = async (): Promise<Mechanic[]> => {
   return response.data;
 };
 
-// export const validateAdminCoordinatorEmail = async (email: string): Promise<any> => {
-//   const response = await axiosInstance.post(`${API_URL}/validate-email`, { email }, {withCredentials : true});
-//   return response.data;
-// };
+export const validateAdminCoordinatorEmail = async (email: string): Promise<any> => {
+  const response = await axiosInstance.post(`${API_URL}/validate-email`, { email }, {withCredentials : true});
+  return response.data;
+};
 
 
 export const createComplaint = async (complaintData: ComplaintFormData) => {
@@ -111,6 +112,7 @@ export const getMechanicComplaints = async (mechanicId: string | undefined): Pro
 };
 // Accept a complaint assignment
 export const acceptComplaint = async (complaintId: string, mechanicId: string): Promise<Complaint> => {
+  console.log(complaintId, "12312")
   const response = await axiosInstance.post(`${API_URL}/acceptComplaint/${complaintId}`, { mechanicId });
   return {
     ...response.data,
@@ -140,10 +142,23 @@ export const rejectComplaint = async (
 };
 
 
+interface CompleteTaskParams {
+  taskId: string;
+  mechanicId: string;
+  description: string;
+  paymentStatus: string;
+  paymentMethod?: string | null;
+  amount: number;
+  photos: File[];
+}
+
 export const completeTask = async (
   taskId: string,
   mechanicId: string,
   description: string,
+  paymentStatus : string,
+  paymentMethod : string,
+  amount : number,
   photos: File[]
 ) => {
   try {
@@ -151,8 +166,14 @@ export const completeTask = async (
     formData.append('taskId', taskId);
     formData.append('mechanicId', mechanicId);
     formData.append('description', description);
-    
-    photos.forEach((photo) => {
+    formData.append('paymentStatus', paymentStatus);
+    formData.append('amount', amount.toString());
+
+    if (paymentMethod) {
+      formData.append('paymentMethod', paymentMethod);
+    }
+
+    photos.forEach(photo => {
       formData.append('photos', photo);
     });
     const response = await axiosInstance.post(`${API_URL}/completeTask`, formData, {

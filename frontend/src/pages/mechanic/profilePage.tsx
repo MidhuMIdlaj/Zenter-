@@ -263,7 +263,7 @@ const MechanicProfile = () => {
                     <Tool size={20} className="text-blue-600 mt-1" />
                     <div>
                       <p className="text-sm text-gray-500">Specialization</p>
-                      <p className="text-gray-800 capitalize">{profileData.fieldOfMechanic}</p>
+                      <p className="text-gray-800 capitalize">{profileData.fieldOfMechanic.map((pre : any) => pre)}</p>
                     </div>
                   </div>
                 )}

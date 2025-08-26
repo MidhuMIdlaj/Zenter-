@@ -5,7 +5,8 @@ interface AdminAuthState {
   isLoading: boolean;
   adminData: {
     token: string;
-    email : string
+    email : string;
+    id : string
    } | null;
 }
 

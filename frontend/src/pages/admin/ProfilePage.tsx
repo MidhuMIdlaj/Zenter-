@@ -12,9 +12,10 @@ import {
 import { motion } from 'framer-motion';
 import { AdminProfileService } from '../../api/admin/adminService';
 import { toast } from 'react-toastify';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/Store';
 import { useNavigate } from 'react-router-dom';
+import { setAdminAuth } from '../../store/AdminAuthSlice';
 
 
 interface ProfileData {
@@ -35,8 +36,9 @@ const MatchUpProfilePage = () => {
   const [editData, setEditData] = useState<ProfileData>({ ...profileData });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const adminId = useSelector((state: RootState) => state.adminAuth.adminData?.id);
+  const adminId = useSelector((state: RootState) => state.adminAuth?.adminData?.id);
   const navigate = useNavigate()
+  const dispatch = useDispatch();
   // Fetch profile data on mount
   useEffect(() => {
     if (!adminId) {

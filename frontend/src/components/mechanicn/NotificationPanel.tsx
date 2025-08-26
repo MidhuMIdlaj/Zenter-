@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Bell } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectEmployeeAuthData } from '../../store/selectors';
@@ -13,6 +12,11 @@ export interface Notification {
   read: boolean;
   complaintId?: string;
   deadline?: string;
+  type?: string;
+  senderId?: string;
+  senderName?: string;
+  senderRole?: string;
+  conversationId?: string;
 }
 
 interface NotificationPanelProps {
@@ -22,6 +26,7 @@ interface NotificationPanelProps {
   onNewNotification: (notification: Notification) => void;
   onMarkAsRead: (notificationId: string) => void;
   onMarkAllAsRead: () => void;
+  socket: any | null;
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
@@ -30,16 +35,16 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   notifications,
   onNewNotification,
   onMarkAsRead,
-  onMarkAllAsRead
+  onMarkAllAsRead,
+  socket,
 }) => {
   const [connectionStatus, setConnectionStatus] = useState('Connecting...');
   const [debugInfo, setDebugInfo] = useState<any>({});
   const navigate = useNavigate();
   const { employeeData } = useSelector(selectEmployeeAuthData);
-  const socketRef = useRef<Socket | null>(null);
+  const token = employeeData?.token;
   const panelRef = useRef<HTMLDivElement>(null);
-  const token = employeeData?.token
-  // Handle clicks outside the panel
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
@@ -53,64 +58,29 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     };
   }, [onClose]);
 
-  // Socket connection and event handlers
-   useEffect(() => {
-    if (!recipientId) return;
+  useEffect(() => {
+    if (!recipientId || !socket) return;
 
-    // Cleanup previous connection if exists
-    if (socketRef.current) {
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-
-    console.log('🔌 Initializing socket for mechanic:', recipientId);
-
-    const newSocket = io('http://localhost:5000', {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      timeout: 10000,
-      auth: { token }
-    });
-
-    socketRef.current = newSocket;
-
-    newSocket.on('connect', () => {
-      console.log('✅ Socket connected:', newSocket.id);
+    socket.on('connect', () => {
+      console.log('Socket connected in NotificationPanel:', socket.id);
       setConnectionStatus('Connected');
-      setDebugInfo((prev: any) => ({ ...prev, socketId: newSocket.id, connected: true }));
-
-      newSocket.emit('join_user_room', recipientId, (response: any) => {
-        console.log('🏠 Room join response:', response);
-        setDebugInfo((prev: any) => ({
-          ...prev,
-          roomJoined: response?.success,
-          room: response?.room,
-        }));
-
-        if (response?.success) {
-          console.log(`✅ Successfully joined room for mechanic ${recipientId}`);
-        } else {
-          console.error('❌ Failed to join room');
-        }
-      });
+      setDebugInfo((prev: any) => ({ ...prev, socketId: socket.id, connected: true }));
     });
 
-    newSocket.on('connect_error', (error) => {
-      console.error('❌ Connection error:', error);
+    socket.on('connect_error', (error: any) => {
+      console.error('Socket connection error in NotificationPanel:', error);
       setConnectionStatus('Connection Error');
       setDebugInfo((prev: any) => ({ ...prev, error: error.message }));
     });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('🔌 Socket disconnected:', reason);
+    socket.on('disconnect', (reason: any) => {
+      console.log('Socket disconnected in NotificationPanel:', reason);
       setConnectionStatus('Disconnected');
       setDebugInfo((prev: any) => ({ ...prev, connected: false, disconnectReason: reason }));
     });
 
-    newSocket.on('new_complaint_assigned', (data: any) => {
-      console.log('🔥 Received complaint assignment:', data);
-      
+    socket.on('new_complaint_assigned', (data: Notification) => {
+      console.log('Received new_complaint_assigned in NotificationPanel:', data);
       const newNotification: Notification = {
         _id: data._id || `temp-${Date.now()}`,
         title: data.title || 'New Complaint',
@@ -119,11 +89,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         read: false,
         complaintId: data.complaintId,
         deadline: data.deadline,
+        type: 'complaint',
       };
-
       onNewNotification(newNotification);
-
-      // Show browser notification if permission is granted
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(newNotification.title, {
           body: newNotification.message,
@@ -133,43 +101,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     });
 
     return () => {
-      if (socketRef.current?.connected) {
-        console.log('🔌 Cleaning up socket connection');
-        socketRef.current.disconnect();
-      }
-      socketRef.current = null;
+      socket.off('new_complaint_assigned');
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('disconnect');
     };
-  }, [recipientId, token, onNewNotification]);
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/notification/notifications/${notificationId}/mark-read`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        }
-      );
-
-      if (response.ok) {
-        onMarkAsRead(notificationId);
-      }
-    } catch (error) {
-      console.error('❌ Error marking notification as read:', error);
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const unreadNotifications = notifications.filter((n) => !n.read);
-      for (const notification of unreadNotifications) {
-        await markAsRead(notification._id);
-      }
-      onMarkAllAsRead();
-    } catch (error) {
-      console.error('❌ Error marking all notifications as read:', error);
-    }
-  };
+  }, [recipientId, socket, onNewNotification]);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -197,14 +134,23 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
-      markAsRead(notification._id);
+      onMarkAsRead(notification._id);
     }
-    navigate('/mechanic/tasks', {
-      state: {
-        complaintId: notification.complaintId,
-        fromNotification: true,
-      },
-    });
+    if (notification.type === 'complaint' && notification.complaintId) {
+      navigate('/mechanic/tasks', {
+        state: {
+          complaintId: notification.complaintId,
+          fromNotification: true,
+        },
+      });
+    } else if (notification.type === 'chat' && notification.conversationId) {
+      navigate('/mechanic/chat', {
+        state: {
+          conversationId: notification.conversationId,
+          senderId: notification.senderId,
+        },
+      });
+    }
     onClose();
   };
 
@@ -213,11 +159,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60">
-      <div 
+      <div
         ref={panelRef}
         className="bg-white w-full max-w-md h-full shadow-lg flex flex-col animate-slide-in"
       >
-        {/* Header */}
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
           <div className="flex items-center">
             <Bell size={20} className="text-blue-600 mr-2" />
@@ -236,47 +181,38 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <X size={20} className="text-gray-500" />
           </button>
         </div>
-
-        {/* Connection status (debug) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="px-4 py-2 bg-gray-50 text-xs text-gray-500 border-b">
             Status: {connectionStatus} | Socket: {debugInfo.socketId || 'N/A'}
           </div>
         )}
-
-        {/* Notification actions */}
         <div className="p-3 border-b border-gray-100 flex justify-between items-center">
           <span className="text-sm text-gray-500">
             {unreadNotifications.length} unread notification{unreadNotifications.length !== 1 ? 's' : ''}
           </span>
           {unreadNotifications.length > 0 && (
             <button
-              onClick={markAllAsRead}
+              onClick={onMarkAllAsRead}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
             >
               Mark all as read
             </button>
           )}
         </div>
-
-        {/* Notifications list */}
         <div className="flex-1 overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center p-4">
               <Bell size={40} className="text-gray-300 mb-2" />
               <p className="text-gray-500">No notifications yet</p>
               <p className="text-sm text-gray-400 mt-1">
-                You'll see notifications about new complaints here
+                You'll see notifications about new complaints and messages here
               </p>
             </div>
           ) : (
             <>
-              {/* Unread notifications section */}
               {unreadNotifications.length > 0 && (
                 <div>
-                  <h3 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50">
-                    Unread
-                  </h3>
+                  <h3 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50">Unread</h3>
                   <div className="divide-y divide-gray-100">
                     {unreadNotifications.map((notification) => (
                       <div
@@ -288,7 +224,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           <div>
                             <p className="font-medium text-gray-800">{notification.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                            {notification.deadline && (
+                            {notification.type === 'complaint' && notification.deadline && (
                               <p
                                 className={`text-xs mt-1 ${
                                   new Date(notification.deadline) < new Date()
@@ -297,6 +233,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                 }`}
                               >
                                 {formatDeadline(notification.deadline)}
+                              </p>
+                            )}
+                            {notification.type === 'chat' && notification.senderName && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                From: {notification.senderName} ({notification.senderRole})
                               </p>
                             )}
                           </div>
@@ -310,13 +251,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* Read notifications section */}
               {readNotifications.length > 0 && (
                 <div>
-                  <h3 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50">
-                    Earlier
-                  </h3>
+                  <h3 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50">Earlier</h3>
                   <div className="divide-y divide-gray-100">
                     {readNotifications.map((notification) => (
                       <div
@@ -328,7 +265,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                           <div>
                             <p className="font-medium text-gray-800">{notification.title}</p>
                             <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                            {notification.deadline && (
+                            {notification.type === 'complaint' && notification.deadline && (
                               <p
                                 className={`text-xs mt-1 ${
                                   new Date(notification.deadline) < new Date()
@@ -337,6 +274,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                 }`}
                               >
                                 {formatDeadline(notification.deadline)}
+                              </p>
+                            )}
+                            {notification.type === 'chat' && notification.senderName && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                From: {notification.senderName} ({notification.senderRole})
                               </p>
                             )}
                           </div>
@@ -352,8 +294,6 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             </>
           )}
         </div>
-
-        {/* Footer */}
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={onClose}

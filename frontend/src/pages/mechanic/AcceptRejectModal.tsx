@@ -49,9 +49,9 @@ const AcceptRejectModal: React.FC<AcceptRejectModalProps> = ({
       setIsSubmitting(true);
       setError(null);
       
+      console.log(complaintId, "123123")
       if (complaintId) {
         await acceptComplaint(complaintId, mechanicId);
-        
         toast.success('Complaint accepted successfully!', {
           position: "top-right",
           autoClose: 3000,

@@ -19,6 +19,8 @@ import DeleteConfirmation from "../../../../components/admin/pages/employees/Del
 import EmployeeList from "../../../../components/admin/pages/employees/EmployeeList";
 import Pagination from "../../../../components/admin/pages/employees/pagination";
 import ErrorBoundary from "../../../../utils/ErrorBoundary";
+import RefreshButton from "../../../reusableComponent/RefreshButton";
+import ActionButton from "../../../reusableComponent/ActionButton";
 
 const EmployeeTable: React.FC = () => {
   // State hooks
@@ -46,7 +48,7 @@ const EmployeeTable: React.FC = () => {
     previousJob: "",
     experience: "",
     status: 'active',
-    fieldOfMechanic : ""
+    fieldOfMechanic: []
   });
   
   const [employees, setEmployees] = useState<EmployeeResponse[]>([]);
@@ -216,17 +218,27 @@ const EmployeeTable: React.FC = () => {
       previousJob: "",
       experience: "",
       status: 'active',
-      fieldOfMechanic : ""
+      fieldOfMechanic : []
     });
   };
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+const handleInputChange = (
+  nameOrEvent: string | React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  value?: any
+) => {
+  if (typeof nameOrEvent === 'string') {
+    setFormData(prevFormData => ({
+      ...prevFormData,
+      [nameOrEvent]: Array.isArray(value) ? [...value] : value
+    }));
+  } else {
+    const { name, value } = nameOrEvent.target;
     setFormData(prevFormData => ({
       ...prevFormData,
       [name]: value
     }));
-  };
+  }
+};
 
   // Modal actions
   const openEditModal = (employee: EmployeeFormData) => {
@@ -363,62 +375,44 @@ const EmployeeTable: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden font-poppins">
-      {/* Header Section */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200"
-      >
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
-              <Briefcase className="text-blue-600" size={24} />
-              Employee Management
-            </h2>
-            <p className="text-gray-600 mt-1">View and manage your employee database</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('all');
-                setPositionFilter('all');
-                setCurrentPage(1);
-                fetchEmployees(1);
-              }}
-              className={`flex items-center gap-2 p-2 rounded-full ${isRefreshing ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-100'}`}
-              title="Refresh data"
-            >
-              <motion.div
-                animate={isRefreshing ? { rotate: 360 } : {}}
-                transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: "linear" }}
-              >
-                <RefreshCw size={18} />
-              </motion.div>
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => { 
-                setIsEditMode(false); 
-                setShowModal(true); 
-                console.log('showModal should be true:', showModal);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              <span>Add Employee</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
+ <div className="bg-white rounded-xl shadow-lg overflow-hidden font-poppins">
+    <motion.div 
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200"
+    >
+    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+   <div>
+    <h2 className="text-2xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
+      <Briefcase className="text-blue-600" size={24} />
+      Employee Management
+    </h2>
+    <p className="text-gray-600 mt-1">View and manage your employee database</p>
+    </div>
+   <div className="flex items-center gap-3">
+    <RefreshButton
+      isRefreshing={isRefreshing}
+      onClick={() => {
+        setSearchTerm('');
+        setStatusFilter('all');
+        setPositionFilter('all');
+        setCurrentPage(1);
+        fetchEmployees(1);
+      }}
+      title="Refresh data"
+    />
 
-      {/* Search and Filter Section */}
+    <ActionButton
+      label="Add Employee"
+      icon={Plus}
+      onClick={() => {
+        setIsEditMode(false);
+        setShowModal(true);
+      }}
+    />
+    </div>
+   </div>
+    </motion.div>
       <div className="p-6 border-b border-gray-200 bg-white">
         <div className="flex flex-col md:flex-row items-center gap-4">
           <div className="relative w-full md:w-96">

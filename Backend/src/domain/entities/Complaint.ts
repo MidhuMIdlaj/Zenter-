@@ -11,6 +11,9 @@ export type CompletionDetails = {
   photos: string[];
   completedAt: Date | string;
   completedBy: string;
+  paymentStatus?: string;
+  amount?: number;
+  paymentMethod?: string;
 };
 
 export default class ServiceRequest {

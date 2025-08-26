@@ -15,6 +15,7 @@ import { fetchEmployees } from "../../../api/admin/Employee";
 import { useSelector } from "react-redux";
 import { selectAdminAuthData } from "../../../store/selectors";
 import { ChatService } from "../../../api/chatService.ts/chatApi";
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
 interface Coordinator {
   id: string;
@@ -30,6 +31,15 @@ interface Coordinator {
   newMessagesCount?: number;
 }
 
+interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string; 
+  size: number;
+  file?: File; 
+}
+
 interface ChatMessage {
   id: string;
   senderId: string;
@@ -38,10 +48,12 @@ interface ChatMessage {
   time: string;
   isDelivered?: boolean;
   isRead?: boolean;
-  messageType?: "text" | "task" | "urgent";
+  messageType?: "text" | "task" | "urgent" | "file";
   conversationId: string;
-  senderRole  : string;
-  receiverRole : string;
+  senderRole: string;
+  receiverRole: string;
+  attachments?: Attachment[];
+  isOptimistic?: boolean; 
 }
 
 const formatMessage = (message: any): ChatMessage => ({
@@ -65,6 +77,11 @@ const AdminCoordinatorChat: React.FC = () => {
   const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
   const [selectedCoordinator, setSelectedCoordinator] =
   useState<Coordinator | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newMessage, setNewMessage] = useState<string>("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -78,8 +95,38 @@ const AdminCoordinatorChat: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
   const { adminData } = useSelector(selectAdminAuthData);
   const userId = adminData?.id;
+  console.log("Admin Data:", adminData);
   const token = adminData?.token;
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const addMessageSafely = (newMessage: ChatMessage) => {
+    return (prev: ChatMessage[]) => {
+      const exists = prev.some(msg => 
+        msg.id === newMessage.id || 
+        (msg.conversationId === newMessage.conversationId && 
+         msg.senderId === newMessage.senderId && 
+         msg.text === newMessage.text && 
+         Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
+      );
+      
+      if (exists) {
+        return prev; 
+      }
+      
+      return [...prev, newMessage];
+    };
+  };
+  console.log("User ID:", userId);
+
+  const updateOptimisticMessage = (tempId: string, realMessage: ChatMessage) => {
+    setMessages(prev => 
+      prev.map(msg => 
+        msg.id === tempId 
+          ? { ...realMessage, time: new Date(realMessage.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }
+          : msg
+      )
+    );
+  };
   
   const initializeSocket = useCallback(() => {
     if (!userId || !token) return;
@@ -109,7 +156,34 @@ const AdminCoordinatorChat: React.FC = () => {
           [conversationId]: (prev[conversationId] || 0) + 1
         }));
       }
-      setMessages(prev => [...prev, formatMessage(message)]);
+
+      const formattedMessage = formatMessage(message);
+      
+      // If it's our own message, update the optimistic one, otherwise add new message
+      if (message.senderId === userId) {
+        // Find and update optimistic message
+        setMessages(prev => {
+          const optimisticIndex = prev.findIndex(msg => 
+            msg.isOptimistic && 
+            msg.senderId === userId && 
+            msg.conversationId === message.conversationId &&
+            Math.abs(new Date(msg.time).getTime() - new Date(message.time).getTime()) < 5000
+          );
+          
+          if (optimisticIndex !== -1) {
+            // Update optimistic message with real data
+            const updated = [...prev];
+            updated[optimisticIndex] = { ...formattedMessage, isOptimistic: false };
+            return updated;
+          } else {
+            // No optimistic message found, add the message
+            return addMessageSafely(formattedMessage)(prev);
+          }
+        });
+      } else {
+        // Message from someone else
+        setMessages(prev => addMessageSafely(formattedMessage)(prev));
+      }
     });
 
     socketRef.current.on("message_read", ({ conversationId }) => {
@@ -122,35 +196,35 @@ const AdminCoordinatorChat: React.FC = () => {
       );
     });
 
-  socketRef.current.on("user_status_update", (update: { userId: string; status: string }) => {
-  setCoordinators(prev => prev.map(coordinator => 
-    coordinator.employeeId === update.userId
-      ? { 
-          ...coordinator, 
-          status: 
-            update.status === "available" || update.status === "busy" || update.status === "offline"
-              ? update.status
-              : "offline"
-        }
-      : coordinator
-  ));
+    socketRef.current.on("user_status_update", (update: { userId: string; status: string }) => {
+      setCoordinators(prev => prev.map(coordinator => 
+        coordinator.employeeId === update.userId
+          ? { 
+              ...coordinator, 
+              status: 
+                update.status === "available" || update.status === "busy" || update.status === "offline"
+                  ? update.status
+                  : "offline"
+            }
+          : coordinator
+      ));
     });
 
-socketRef.current.on("message_delivered", ({ messageId }) => {
-  setMessages(prev =>
-    prev.map(msg =>
-      msg.id === messageId ? { ...msg, isDelivered: true } : msg
-    )
-  );
-});
+    socketRef.current.on("message_delivered", ({ messageId }) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId ? { ...msg, isDelivered: true } : msg
+        )
+      );
+    });
 
-socketRef.current.on("message_read", ({ messageId }) => {
-  setMessages(prev =>
-    prev.map(msg =>
-      msg.id === messageId ? { ...msg, isRead: true } : msg
-    )
-  );
-});
+    socketRef.current.on("message_read", ({ messageId }) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId ? { ...msg, isRead: true } : msg
+        )
+      );
+    });
 
     return () => {
       if (socketRef.current) socketRef.current.disconnect();
@@ -163,49 +237,108 @@ socketRef.current.on("message_read", ({ messageId }) => {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, [initializeSocket]);
-   useEffect(() => {
-const loadData = async () => {
-  try {
-    setLoading(true);
-    const response = await fetchEmployees(1, 10);
-    const employees = response.data.employees || [];
-    const coordinatorsWithMessages = await Promise.all(
-      employees
-        .filter((e: any) => e.position?.toLowerCase() === "coordinator")
-        .map(async (e: any) => {
-          const history = await ChatService.getChatHistory(
-            userId!,
-            e.id
-          );
-          const lastMessage = history.length > 0 
-            ? history[history.length - 1] 
-            : null;
-          
-          return {
-            id: e.id,
-            name: e.employeeName,
-            avatar: e.employeeName?.slice(0, 2).toUpperCase() || "CO",
-            status: e.status || "offline",
-            lastMessage: lastMessage?.text || "No messages yet",
-            time: lastMessage 
-              ? new Date(lastMessage.time).toLocaleTimeString([], { 
-                  hour: "2-digit", 
-                  minute: "2-digit" 
-                })
-              : "",
-            employeeId: e.id,
-            role: "coordinator"
-          };
-        })
-    );
 
-    setCoordinators(coordinatorsWithMessages);
-  } catch (error) {
-    console.error("Error loading data:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleFileChange = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const newAttachments: Attachment[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Use the actual MIME type from the file
+        const fileType = file.type;
+        
+        // Mock upload progress
+        await new Promise(resolve => {
+          let progress = 0;
+          const interval = setInterval(() => {
+            progress += 10;
+            setUploadProgress(progress);
+            if (progress >= 100) {
+              clearInterval(interval);
+              resolve(null);
+            }
+          }, 100);
+        });
+
+        newAttachments.push({
+          id: `file-${Date.now()}-${i}`,
+          name: file.name,
+          url: URL.createObjectURL(file),
+          type: fileType, 
+          size: file.size,
+          file,
+        });
+      }
+
+      setAttachments(prev => [...prev, ...newAttachments]);
+    } catch (error) {
+      console.error("Error uploading files:", error);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(att => att.id !== id));
+  };
+
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        console.log("Fetching coordinators...");
+        console.log(userId, "User ID");
+        const response = await fetchEmployees(1, 10);
+        const employees = response.data.employees || [];
+        const coordinatorsWithMessages = await Promise.all(
+          employees
+            .filter((e: any) => e.position?.toLowerCase() === "coordinator")
+            .map(async (e: any) => {
+              const history = await ChatService.getChatHistory(
+                userId!,
+                e.id
+              );
+              const lastMessage = history.length > 0 
+                ? history[history.length - 1] 
+                : null;
+              
+              return {
+                id: e.id,
+                name: e.employeeName,
+                avatar: e.employeeName?.slice(0, 2).toUpperCase() || "CO",
+                status: e.status || "offline",
+                lastMessage: lastMessage?.text || "No messages yet",
+                time: lastMessage 
+                  ? new Date(lastMessage.time).toLocaleTimeString([], { 
+                      hour: "2-digit", 
+                      minute: "2-digit" 
+                    })
+                  : "",
+                employeeId: e.id,
+                role: "coordinator"
+              };
+            })
+        );
+
+        setCoordinators(coordinatorsWithMessages);
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     if (userId) loadData();
   }, [userId]);
@@ -234,7 +367,7 @@ const loadData = async () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-   const handleSelectCoordinator = async (coordinator: Coordinator) => {
+  const handleSelectCoordinator = async (coordinator: Coordinator) => {
     setSelectedCoordinator(coordinator);
     
     if (userId && coordinator.employeeId) {
@@ -256,61 +389,76 @@ const loadData = async () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedCoordinator || !userId) return;
+    if ((!newMessage.trim() && attachments.length === 0) || !selectedCoordinator || !userId) return;
 
     const messageText = newMessage.trim();
     const conversationId = [userId, selectedCoordinator.employeeId].sort().join('_');
-     setUnreadConversations(prev => {
-    const updated = {...prev};
-    delete updated[conversationId];
-    return updated;
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    
+    setUnreadConversations(prev => {
+      const updated = { ...prev };
+      delete updated[conversationId];
+      return updated;
     });
     
     await ChatService.markMessagesAsRead(conversationId, userId);
 
     if (socketRef.current) {
-    socketRef.current.emit('mark_all_chat_notifications_read', { userId });
-     }
+      socketRef.current.emit('mark_all_chat_notifications_read', { userId });
+    }
+
     const tempMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
+      id: tempId,
       senderId: userId,
       receiverId: selectedCoordinator.employeeId,
       text: messageText,
       time: new Date().toISOString(),
       isDelivered: false,
       isRead: false,
-      messageType: determineMessageType(messageText),
+      messageType: attachments.length > 0 ? 'file' : determineMessageType(messageText),
       conversationId,
-      senderRole : "admin",
-      receiverRole :"coordinator"
+      senderRole: "admin",
+      receiverRole: "coordinator",
+      attachments: attachments.length > 0 ? attachments : undefined,
+      isOptimistic: true,
     };
 
-    try {
-      setNewMessage("");
-      setMessages(prev => [...prev, formatMessage(tempMessage)]);
+    const filesToSend = attachments.map((att) => att.file!).filter(Boolean); // Use stored File objects
 
-      const savedMessage = await ChatService.sendMessage(tempMessage);
+    try {
+      // Clear input immediately
+      setNewMessage("");
+      setAttachments([]);
       
-      // Update with server response
-       if (socketRef.current) {
-      socketRef.current.emit("send_message", savedMessage, (deliveryConfirmation: any) => {
-        if (deliveryConfirmation?.success) {
-          setMessages(prev =>
-            prev.map(msg =>
-              msg.id === tempMessage.id 
-                ? { ...msg, id: savedMessage.id, isDelivered: true }
-                : msg
-            )
-          );
-        }
-      });
-    }
+      // Add optimistic message
+      setMessages(prev => addMessageSafely(formatMessage(tempMessage))(prev));
+
+      console.log("Sending message:", tempMessage, filesToSend);
+      const savedMessage = await ChatService.sendMessage(tempMessage, filesToSend);
+      
+      // Update optimistic message with real message data
+      updateOptimisticMessage(tempId, savedMessage);
+      
+      // Emit through socket for real-time delivery
+      if (socketRef.current) {
+        socketRef.current.emit("send_message", savedMessage, (deliveryConfirmation: any) => {
+          if (deliveryConfirmation?.success) {
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === tempId 
+                  ? { ...msg, id: savedMessage.id, isDelivered: true, attachments: savedMessage.attachments }
+                  : msg
+              )
+            );
+          }
+        });
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      // Remove failed optimistic message
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
     }
   };
-
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -362,7 +510,7 @@ const loadData = async () => {
     }
   };
 
-     return (
+  return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh)]">
       {/* Connection Status Indicator */}
       <div
@@ -372,7 +520,6 @@ const loadData = async () => {
             : "bg-red-100 text-red-800"
         }`}
       >
-        {socketConnected ? "🟢 Connected" : "🔴 Disconnected"}
       </div>
       {!selectedCoordinator ? (
         <div className="h-full flex flex-col">
@@ -382,15 +529,6 @@ const loadData = async () => {
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Chat with Coordinators
               </h2>
-              <div className="flex items-center space-x-2">
-                <div className="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-medium">
-                  {
-                    filteredCoordinators.filter((c) => c.status === "available")
-                      .length
-                  }{" "}
-                  Available
-                </div>
-              </div>
             </div>
             {/* Search */}
             <div className="relative">
@@ -464,10 +602,10 @@ const loadData = async () => {
                             {coordinator.time}
                           </span>
                           {unreadConversations[[userId, coordinator.employeeId].sort().join('_')] > 0 && (
-                          <div className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {unreadConversations[[userId, coordinator.employeeId].sort().join('_')]}
-                          </div>
-                        )}
+                            <div className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                              {unreadConversations[[userId, coordinator.employeeId].sort().join('_')]}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -539,53 +677,82 @@ const loadData = async () => {
                   message.senderId === userId ? "justify-end" : "justify-start"
                 }`}
               >
-               <div className="max-w-xs lg:max-w-md">
-                {message.senderId !== userId && (
-                <div className="text-xs text-gray-500 mb-1 ml-1">
-                  {selectedCoordinator?.name}
-                </div>
-                 )}
+                <div className="max-w-xs lg:max-w-md">
+                  {message.senderId !== userId && (
+                    <div className="text-xs text-gray-500 mb-1 ml-1">
+                      {selectedCoordinator?.name}
+                    </div>
+                  )}
 
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl shadow-sm ${
-                    message.senderId === userId
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md"
-                      : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(
-                          message.messageType
-                        )}`
-                  }`}
-                >
-                  <p className="break-words">{message.text}</p>
                   <div
-                    className={`flex items-center justify-between mt-2 text-xs ${
+                    className={`px-4 py-3 rounded-2xl shadow-sm ${
                       message.senderId === userId
-                        ? "text-blue-100"
-                        : "text-gray-500"
+                        ? `bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
+                        : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(
+                            message.messageType
+                          )}`
                     }`}
                   >
-                    <span>{message.time}</span>
-                        {message.senderId === userId && (
-                          <div className="flex items-center ml-2 space-x-0.5">
-                            {!message.isDelivered ? (
-                              <>
-                                <CheckCheck size={14} className="text-red-500" />
-                                <CheckCheck size={14} className="text-red-500 -ml-1" />
-                              </>
-                            ) : message.isRead ? (
-                              <>
-                                <CheckCheck size={14} className="text-green-500" />
-                                <CheckCheck size={14} className="text-green-500 -ml-1" />
-                              </>
+                    {message.text && <p className="break-words">{message.text}</p>}
+
+                    {/* Render attachments */}
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {message.attachments.map((attachment, idx) => (
+                          <div key={idx} className="border-t pt-2">
+                            {attachment.type.startsWith('image/') ? (
+                              <img
+                                src={attachment.url}
+                                alt={attachment.name}
+                                className="max-w-full rounded-lg"
+                              />
                             ) : (
-                              <>
-                                <CheckCheck size={14} className="text-gray-500" />
-                                <CheckCheck size={14} className="text-gray-500 -ml-1" />
-                              </>
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-2 text-sm text-blue-500 hover:underline"
+                              >
+                                <Paperclip size={14} />
+                                <span>{attachment.name}</span>
+                                <span>({Math.round(attachment.size / 1024)} KB)</span>
+                              </a>
                             )}
                           </div>
-                        )}
+                        ))}
+                      </div>
+                    )}
+
+                    <div
+                      className={`flex items-center justify-between mt-2 text-xs ${
+                        message.senderId === userId ? "text-blue-100" : "text-gray-500"
+                      }`}
+                    >
+                      <span>{message.time}</span>
+                      {message.senderId === userId && (
+                        <div className="flex items-center ml-2 space-x-0.5">
+                          {message.isOptimistic ? (
+                            <Clock size={14} className="text-gray-400" />
+                          ) : !message.isDelivered ? (
+                            <>
+                              <CheckCheck size={14} className="text-red-500" />
+                              <CheckCheck size={14} className="text-red-500 -ml-1" />
+                            </>
+                          ) : message.isRead ? (
+                            <>
+                              <CheckCheck size={14} className="text-green-500" />
+                              <CheckCheck size={14} className="text-green-500 -ml-1" />
+                            </>
+                          ) : (
+                            <>
+                              <CheckCheck size={14} className="text-gray-500" />
+                              <CheckCheck size={14} className="text-gray-500 -ml-1" />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
                 </div>
               </div>
             ))}
@@ -612,10 +779,72 @@ const loadData = async () => {
 
           {/* Message Input - Fixed Bottom Alignment */}
           <div className="bg-white/90 backdrop-blur-sm border-t border-blue-100 p-4 mt-auto">
-            <div className="flex items-end space-x-3">
-              <button className="p-2 rounded-full hover:bg-blue-100 transition-colors mb-1 flex-shrink-0">
-                <Paperclip size={20} className="text-gray-500" />
-              </button>
+            {/* Attachments preview */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {attachments.map(attachment => (
+                  <div key={attachment.id} className="relative group">
+                    {attachment.type === 'image' ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                        <img 
+                          src={attachment.url} 
+                          alt={attachment.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-1">
+                          <Paperclip size={14} className="mx-auto text-gray-500" />
+                          <p className="text-xs text-gray-600 truncate w-14">{attachment.name}</p>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => removeAttachment(attachment.id)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload progress */}
+            {isUploading && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full" 
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            )}
+
+            <div className="flex items-end space-x-3 relative">
+              <div className="flex space-x-1 mb-1 flex-shrink-0">
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  <Paperclip size={20} className="text-gray-500" />
+                </button>
+                <button 
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 rounded-full hover:bg-blue-100 transition-colors"
+                >
+                  <Smile size={20} className="text-gray-500" />
+                </button>
+                
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => handleFileChange(e.target.files)}
+                  multiple
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
+              </div>
               
               <div className="flex-1 relative">
                 <input
@@ -629,18 +858,26 @@ const loadData = async () => {
                   disabled={!socketConnected}
                   className="w-full px-4 py-3 pr-12 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-50 resize-none"
                 />
-                <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full hover:bg-gray-200 transition-colors">
-                  <Smile size={18} className="text-gray-500" />
-                </button>
               </div>
               
               <button
                 onClick={handleSendMessage}
-                disabled={!newMessage.trim() || !socketConnected}
+                disabled={(!newMessage.trim() && attachments.length === 0) || !socketConnected}
                 className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg flex-shrink-0"
               >
                 <Send size={18} />
               </button>
+
+              {/* Emoji Picker */}
+              {showEmojiPicker && (
+                <div className="absolute bottom-14 left-14 z-10">
+                  <EmojiPicker 
+                    onEmojiClick={handleEmojiClick}
+                    width={300}
+                    height={350}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

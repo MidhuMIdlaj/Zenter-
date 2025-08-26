@@ -1,22 +1,58 @@
-import { RouteObject } from 'react-router-dom';
-import EmployeeProtectedRoute from '../components/EmployeeProtectedRoute';
+// src/routers/CoordinatorRouters.ts
+import { Outlet, RouteObject } from 'react-router-dom';
+import CoordinatorLayout from '../pages/coordinator/CoordinatorLayout';
 import EmployeeDashboard from '../pages/coordinator/Dashboard';
-// import Profile from '../pages/employee/Profile';
+import UserManagement from '../pages/coordinator/userManagement';
+import EmployeeProtectedRoute from '../components/EmployeeProtectedRoute';
+import ComplaintManagement from '../pages/coordinator/ComplaintManagement';
+import ChatWithAdmin from '../pages/coordinator/ChatWithAdmin';
+import CoordinatorProfilePage from '../pages/coordinator/ProfilePage'
 
-const employeeRoutes: RouteObject[] = [
+const coordinatorRoutes: RouteObject[] = [
   {
-    element: <EmployeeProtectedRoute />,
+    element: (
+      <EmployeeProtectedRoute allowedPositions={['coordinator']}>
+        <Outlet />
+      </EmployeeProtectedRoute>
+    ),
     children: [
       {
-        path: '/coordinator/dashboard',
-        element: <EmployeeDashboard />,
+        element: <CoordinatorLayout />,
+        children: [
+          {
+            path: '/coordinator/dashboard',
+            element: <EmployeeDashboard />,
+          },
+          {
+            path: '/user-management',
+            element: <UserManagement />,
+          },
+
+          {
+            path: '/complaint-management',
+            element: <ComplaintManagement />,
+          },
+          {
+            path: '/employee-chat',
+            element: <ChatWithAdmin />,
+          },
+          // Add other coordinator routes here
+          // {
+          //   path: '/complaint-management',
+          //   element: <ComplaintManagement />,
+          // },
+          // {
+          //   path: '/notification',
+          //   element: <NotificationPage />,
+          // },
+          {
+            path: 'employee/profile',
+            element : <CoordinatorProfilePage/>
+          }
+        ],
       },
-    //   {
-    //     path: '/employee/profile',
-    //     element: <Profile />,
-    //   },
     ],
   },
 ];
 
-export default employeeRoutes;
+export default coordinatorRoutes;

@@ -34,6 +34,7 @@ import {
 import { formatDateForInput } from "../../../../utils/dataFormat";
 import CustomerDetails from "./CustomerDetails";
 import Pagination from "../employees/pagination";
+import Table, { TableColumn } from "../../../reusableComponent/ReusableTable";
 
 export interface Customer {
   id: string;
@@ -75,6 +76,7 @@ interface FormData {
   status: string;
   lastLogin?: string;
 }
+
 const CustomerTable: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +116,37 @@ const CustomerTable: React.FC = () => {
   const itemsPerPage = 6;
   const [totalPages, setTotalPages] = useState(0);
 
+  // Define table columns
+  const customerColumns: TableColumn[] = [
+    {
+      key: "name",
+      header: "Customer",
+      sortable: true
+    },
+    {
+      key: "email",
+      header: "Email",
+      hidden: "md",
+      icon: <Mail size={16} className="text-gray-400" />
+    },
+    {
+      key: "phone",
+      header: "Phone",
+      hidden: "sm",
+      icon: <Phone size={16} className="text-gray-400" />
+    },
+    {
+      key: "place",
+      header: "Location",
+      hidden: "lg",
+      icon: <MapPin size={16} className="text-gray-400" />
+    },
+    {
+      key: "status",
+      header: "Status"
+    }
+  ];
+
   const fetchCustomers = async (page: number = currentPage) => {
     try {
       setIsRefreshing(true);
@@ -132,12 +165,12 @@ const CustomerTable: React.FC = () => {
             status: client.status as "active" | "inactive",
             avatar: client.clientName?.charAt(0) || 'U',
             attendanceData: client.attendedDate,
-            productName: client.productName || "",
-            quantity: client.quantity || "",
-            brand: client.brand || "",
-            model: client.model || "",
-            warrantyDate: client.warrantyDate || "",
-            guaranteeDate: client.guaranteeDate || ""
+            productName: client.products.productName || "",
+            quantity: client.products[0].quantity || "",
+            brand: client.products[0].brand || "",
+            model: client.products[0].model || "",
+            warrantyDate: client.products[0].warrantyDate || "",
+            guaranteeDate: client.products[0].guaranteeDate || ""
           }));
           
         setCustomers(mappedClients);
@@ -200,6 +233,7 @@ const CustomerTable: React.FC = () => {
       setIsRefreshing(false);
     }
   };
+
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (searchTerm.length >= MIN_SEARCH_CHARS || statusFilter !== 'all') {
@@ -209,7 +243,7 @@ const CustomerTable: React.FC = () => {
       }
     }, 500);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, statusFilter,]);
+  }, [searchTerm, statusFilter]);
 
   useEffect(() => {
     if (searchTerm.length >= MIN_SEARCH_CHARS || statusFilter !== 'all') {
@@ -218,6 +252,7 @@ const CustomerTable: React.FC = () => {
       fetchCustomers(currentPage);
     }
   }, [currentPage]);
+
   const sortedCustomers = [...customers].sort((a, b) => {
     if (!sortConfig) return 0; 
     const { key, direction } = sortConfig;
@@ -235,7 +270,6 @@ const CustomerTable: React.FC = () => {
     }
   };
 
-  // Handle status toggle
   const toggleStatus = async (id: string) => {
     const customerToUpdate = customers.find(customer => customer.id === id);
     if (!customerToUpdate) return;
@@ -313,7 +347,6 @@ const CustomerTable: React.FC = () => {
     }
   };
 
-  // Handle edit client
   const handleEdit = async (customer: Customer) => {
     try {
       setLoading(true);
@@ -382,7 +415,7 @@ const CustomerTable: React.FC = () => {
       console.error("Operation failed:", error);
       toast.error(`Failed to ${data.id ? 'update' : 'add'} client`);
     }
-  }; // <-- This closing brace was missing
+  };
 
   const handleSoftDelete = async () => {
     if (!selectedCustomer) return;
@@ -416,16 +449,14 @@ const CustomerTable: React.FC = () => {
     setShowDeleteConfirm(true);
   };
 
-  // Handle sorting
-  const requestSort = (key: keyof Customer) => {
+  const requestSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
     }
-    setSortConfig({ key, direction });
+    setSortConfig({ key: key as keyof Customer, direction });
   };
 
-  // Animation variants
   const tableRowVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: (i: number) => ({ 
@@ -596,164 +627,39 @@ const CustomerTable: React.FC = () => {
       </div>
 
       {/* Table Section */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gray-50 text-gray-600 text-left border-b border-gray-200">
-              <th
-                className="p-4 font-medium cursor-pointer"
-                onClick={() => requestSort("name")}
-              >
-                <div className="flex items-center gap-1">
-                  <span>Customer</span>
-                  {sortConfig?.key === "name" && (
-                    sortConfig.direction === "asc" ? (
-                      <ChevronUp size={16} className="text-blue-600" />
-                    ) : (
-                      <ChevronDown size={16} className="text-blue-600" />
-                    )
-                  )}
-                </div>
-              </th>
-              <th className="p-4 font-medium hidden md:table-cell">
-                <div className="flex items-center gap-1">
-                  <Mail size={16} className="text-gray-400" /> 
-                  <span>Email</span>
-                </div>
-              </th>
-              <th className="p-4 font-medium hidden sm:table-cell">
-                <div className="flex items-center gap-1">
-                  <Phone size={16} className="text-gray-400" /> 
-                  <span>Phone</span>
-                </div>
-              </th>
-              <th className="p-4 font-medium hidden lg:table-cell">
-                <div className="flex items-center gap-1">
-                  <MapPin size={16} className="text-gray-400" /> 
-                  <span>Location</span>
-                </div>
-              </th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedCustomers.length > 0 ? (
-              sortedCustomers.map((customer, index) => (
-                <motion.tr
-                  key={customer.id}
-                  custom={index}
-                  variants={tableRowVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="hover:bg-blue-50 transition-colors group"
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-medium border-2 border-blue-200 shadow-sm">
-                        {customer.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
-                          {customer.name}
-                        </p>
-                        <p className="text-sm text-gray-500 md:hidden">
-                          {customer.email}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 hidden md:table-cell">
-                    <p className="text-gray-700">{customer.email}</p> 
-                  </td>
-                  <td className="p-4 hidden sm:table-cell">
-                    <p className="text-gray-700">{customer.phone}</p>
-                  </td>
-                  <td className="p-4 hidden lg:table-cell">
-                    <div>
-                      <p className="text-gray-700">{customer.place}</p>
-                      <p className="text-sm text-gray-500">
-                        {customer.district}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <button
-                      onClick={() => toggleStatus(customer.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        customer.status === "active"
-                          ? "bg-green-100 text-green-800 hover:bg-green-200"
-                          : "bg-red-100 text-red-800 hover:bg-red-200"
-                      }`}
-                    >
-                      <span className="flex items-center gap-1">
-                        <span className={`w-2 h-2 rounded-full ${customer.status === "active" ? "bg-green-500" : "bg-red-500"}`}></span>
-                        {customer.status}
-                      </span>
-                    </button>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-end gap-2">
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setShowViewModal(true);
-                        }}
-                        className="p-2 text-green-600 hover:bg-green-100 rounded-full transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={18} />
-                      </motion.button>
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleEdit(customer)}
-                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={18} />
-                      </motion.button>
-                      <motion.button 
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => confirmDelete(customer)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={18} />
-                      </motion.button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <AlertCircle size={48} className="text-gray-300 mb-4" />
-                    <p className="text-lg font-medium">No customers found</p>
-                    <p className="text-gray-500 mt-1">Try adjusting your search or filter criteria</p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <Table<Customer>
+      data={sortedCustomers}
+      columns={customerColumns}
+      sortConfig={sortConfig ?? undefined}
+      onSort={requestSort}
+      onToggleStatus={(id) => toggleStatus(id)}
+      onView={(customer) => {
+        setSelectedCustomer(customer);
+        setShowViewModal(true);
+      }}
+      onEdit={handleEdit}
+      onDelete={confirmDelete}
+      idKey="id"
+      nameKey="name"
+      emailKey="email"
+      rowVariants={tableRowVariants}
+      emptyMessage={{
+        title: "No customers found",
+        description: "Try adjusting your search or filter criteria"
+      }}
+    />
 
-      {/* Pagination Section */}
-      {totalItems > 0 && (
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={totalPages}
-          indexOfFirstItem={(currentPage - 1) * itemsPerPage + 1}
-          indexOfLastItem={Math.min(currentPage * itemsPerPage, totalItems)}
-          totalItems={totalItems}
-          onPageChange={handlePageChange}
-        />
-      )}
+{/* Pagination Section */}
+{totalItems > 0 && (
+  <Pagination 
+    currentPage={currentPage}
+    totalPages={totalPages}
+    indexOfFirstItem={(currentPage - 1) * itemsPerPage + 1}
+    indexOfLastItem={Math.min(currentPage * itemsPerPage, totalItems)}
+    totalItems={totalItems}
+    onPageChange={handlePageChange}
+  />
+)}
 
       {/* View Customer Modal */}
       {showViewModal && selectedCustomer && (
