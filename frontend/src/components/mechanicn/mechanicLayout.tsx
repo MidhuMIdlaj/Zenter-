@@ -36,7 +36,7 @@ const MechanicLayout = () => {
   const fetchNotifications = useCallback(async () => {
     if (!mechanicId) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/notification/notifications/${mechanicId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/notification/notifications/${mechanicId}`, {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include',
       });
@@ -56,7 +56,7 @@ const MechanicLayout = () => {
   useEffect(() => {
     if (!userId || !token) return;
 
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
       transports: ['websocket'],
       auth: { token },
       withCredentials: true,
@@ -244,7 +244,7 @@ const MechanicLayout = () => {
           }}
           onMarkAsRead={async (notificationId) => {
             await fetch(
-              `http://localhost:5000/api/notification/notifications/${notificationId}/mark-read`,
+              `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/${notificationId}/mark-read`,
               {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
@@ -260,7 +260,7 @@ const MechanicLayout = () => {
           }}
           onMarkAllAsRead={async () => {
             await fetch(
-              `http://localhost:5000/api/notification/notifications/mark-all-chat-read`,
+              `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/mark-all-chat-read`,
               {
                 method: 'POST',
                 headers: {

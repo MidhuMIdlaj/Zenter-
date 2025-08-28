@@ -227,7 +227,7 @@ const ChatWithMechanics: React.FC = () => {
       socketRef.current.disconnect();
     }
 
-    socketRef.current = io('http://localhost:5000', {
+    socketRef.current = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
       transports: ['websocket', 'polling'],
       auth: { token },
       withCredentials: true,

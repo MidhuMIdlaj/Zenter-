@@ -21,7 +21,7 @@ export const StartVideoCall = () => {
       }
 
       const response = await VideoCallService.sendInvitations(callLink, adminData.id , adminData.email);
-      const newSocket = io('http://localhost:5000', {
+      const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000', {
         auth: { token: user?.token },
         transports: ['websocket'],
       });

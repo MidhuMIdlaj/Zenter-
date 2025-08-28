@@ -27,7 +27,7 @@ export const NotificationProvider: React.FC<{children: React.ReactNode}> = ({ ch
   useEffect(() => {
     if (!user) return;
     
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
       auth: { token: user.token },
       transports: ['websocket'],
     });

@@ -186,7 +186,7 @@ const CoordinatorLayout = () => {
   useEffect(() => {
     if (!userId || !token) return;
 
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
       transports: ['websocket'],
       auth: { token },
       withCredentials: true,

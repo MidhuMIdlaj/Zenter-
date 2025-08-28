@@ -85,7 +85,7 @@ const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) 
       if (response.success) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
-        const socket = io("http://localhost:5000", { auth: { token } });
+        const socket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL  ||"http://localhost:5000", { auth: { token } });
         socket.emit("all_chat_notifications_read", { userId });
       }
     } catch (error) {
@@ -97,7 +97,7 @@ const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) 
     fetchUnreadCount();
     if (!userId || !token) return;
 
-    const socket = io("http://localhost:5000", {
+    const socket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localhost:5000", {
       transports: ["websocket"],
       auth: { token },
       withCredentials: true,

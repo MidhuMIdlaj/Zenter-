@@ -21,7 +21,7 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
 
   useEffect(() => {
     if (!userId || !token) return;
-    const socket = io("http://localhost:5000", {
+    const socket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localhost:5000", {
       transports: ["websocket"],
       auth: { token },
       withCredentials: true,
