@@ -12,7 +12,161 @@ import {
   QrCode
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { motion, AnimatePresence } from 'framer-motion';
 
+// ConfirmationDialog Component
+type DialogType = 'danger' | 'success' | 'info';
+
+interface ConfirmationDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void | Promise<void>;
+  title: string;
+  message: string;
+  type?: DialogType;
+  confirmText?: string;
+  cancelText?: string;
+}
+
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  type = 'info',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+}) => {
+  const getIcon = () => {
+    switch (type) {
+      case 'danger':
+        return (
+          <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
+      case 'success':
+        return (
+          <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case 'info':
+      default:
+        return (
+          <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+    }
+  };
+
+  const getIconBackground = () => {
+    switch (type) {
+      case 'danger':
+        return 'bg-red-50 border-red-100';
+      case 'success':
+        return 'bg-emerald-50 border-emerald-100';
+      default:
+        return 'bg-blue-50 border-blue-100';
+    }
+  };
+
+  const getConfirmButtonStyles = () => {
+    switch (type) {
+      case 'danger':
+        return 'bg-red-500 hover:bg-red-600 focus:ring-red-500';
+      case 'success':
+        return 'bg-emerald-500 hover:bg-emerald-600 focus:ring-emerald-500';
+      default:
+        return 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500';
+    }
+  };
+
+  const handleConfirm = async () => {
+    try {
+      await onConfirm();
+    } catch (error) {
+      console.error('Confirmation action failed:', error);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={onClose}
+            />
+            
+            {/* Dialog */}
+            <motion.div
+              className="relative w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            >
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+                {/* Content */}
+                <div className="p-8">
+                  {/* Icon */}
+                  <div className="flex justify-center mb-6">
+                    <div className={`p-4 rounded-full border-2 ${getIconBackground()}`}>
+                      {getIcon()}
+                    </div>
+                  </div>
+                  
+                  {/* Title */}
+                  <div className="text-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 leading-tight">
+                      {title}
+                    </h3>
+                  </div>
+                  
+                  {/* Message */}
+                  <div className="text-center mb-8">
+                    <p className="text-gray-600 leading-relaxed">
+                      {message}
+                    </p>
+                  </div>
+                  
+                  {/* Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button
+                      onClick={onClose}
+                      className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 focus:outline-none transition-all duration-200"
+                    >
+                      {cancelText}
+                    </button>
+                    <button
+                      onClick={handleConfirm}
+                      className={`flex-1 px-6 py-3 text-sm font-medium text-white rounded-xl focus:ring-4 focus:outline-none transition-all duration-200 shadow-lg ${getConfirmButtonStyles()}`}
+                    >
+                      {confirmText}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// TaskCompletionModal Component
 interface CompletionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,8 +180,8 @@ interface CompletionData {
   description: string;
   photos: File[];
   amount: number;
-  paymentStatus : string;
-  paymentMothod? : string | null
+  paymentStatus: string;
+  paymentMothod?: string | null;
 }
 
 const TaskCompletionModal: React.FC<CompletionModalProps> = ({
@@ -48,6 +202,20 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
   const [serviceAmount, setServiceAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr' | null>(null);
   const [paymentError, setPaymentError] = useState<string>('');
+  
+  // Confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [dialogConfig, setDialogConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'danger' | 'info' | 'success';
+    onConfirm: () => void;
+  }>({
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: () => {},
+  });
 
   const handleFileChange = (files: FileList | null) => {
     if (!files) return;
@@ -177,32 +345,39 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
   const handlePaymentSubmit = async () => {
     if (!validatePayment()) return;
     
-    const confirmed = window.confirm(
-      `Confirm payment of ${serviceAmount} INR to a.hishamkk@oksbi for task "${taskTitle}"?`
-    );
-    if (!confirmed) return;
-
-    try {
-      await onSubmit({
-        description: description.trim(),
-        photos,
-        amount: Number(serviceAmount),
-        paymentStatus : 'Completed',
-        paymentMothod : paymentMethod
-      });
-      
-      setDescription('');
-      setPhotos([]);
-      setPaymentScreenshot(null);
-      setErrors({});
-      setServiceAmount('');
-      setPaymentMethod(null);
-      setShowPaymentModal(false);
-      onClose();
-    } catch (error) {
-      console.error('Error submitting completion data:', error);
-      setPaymentError('Failed to process payment');
-    }
+    // Set up confirmation dialog
+    setDialogConfig({
+      title: "Confirm Payment",
+      message: `Confirm payment of ${serviceAmount} INR to a.hishamkk@oksbi for task "${taskTitle}"?`,
+      type: 'info',
+      onConfirm: async () => {
+        try {
+          await onSubmit({
+            description: description.trim(),
+            photos,
+            amount: Number(serviceAmount),
+            paymentStatus: 'Completed',
+            paymentMothod: paymentMethod
+          });
+          
+          setDescription('');
+          setPhotos([]);
+          setPaymentScreenshot(null);
+          setErrors({});
+          setServiceAmount('');
+          setPaymentMethod(null);
+          setShowPaymentModal(false);
+          setShowConfirmDialog(false);
+          onClose();
+        } catch (error) {
+          console.error('Error submitting completion data:', error);
+          setPaymentError('Failed to process payment');
+          setShowConfirmDialog(false);
+        }
+      }
+    });
+    
+    setShowConfirmDialog(true);
   };
 
   const handleClose = () => {
@@ -219,25 +394,28 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
   const generateQRCodeData = () => {
     const amount = Number(serviceAmount).toFixed(2);
     const qrData = `upi://pay?pa=a.hishamkk@oksbi&pn=Midlaj&am=${amount}&cu=INR&tn=Service%20Payment`;
-    console.log('Generated QR Code:', qrData); // Debug log
     return qrData;
   };
 
   const handleQRCodeClick = () => {
-    console.log('QR Code button clicked, serviceAmount:', serviceAmount); // Debug log
     if (!serviceAmount || isNaN(Number(serviceAmount)) || Number(serviceAmount) <= 0) {
       setPaymentError('Please enter a valid service amount');
       return;
     }
-    const confirmed = window.confirm(
-      `Generate QR code for payment of ${serviceAmount} INR to a.hishamkk@oksbi?`
-    );
-    console.log('Confirmation result:', confirmed); // Debug log
-    if (confirmed) {
-      setPaymentMethod('qr');
-      setPaymentError('');
-      console.log('Payment method set to qr'); // Debug log
-    }
+    
+    // Set up confirmation dialog for QR code generation
+    setDialogConfig({
+      title: "Generate QR Code",
+      message: `Generate QR code for payment of ${serviceAmount} INR to a.hishamkk@oksbi?`,
+      type: 'info',
+      onConfirm: () => {
+        setPaymentMethod('qr');
+        setPaymentError('');
+        setShowConfirmDialog(false);
+      }
+    });
+    
+    setShowConfirmDialog(true);
   };
 
   if (!isOpen) return null;
@@ -469,7 +647,6 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
                     onChange={(e) => {
                       setServiceAmount(e.target.value);
                       setPaymentError('');
-                      console.log('Service amount updated:', e.target.value); // Debug log
                     }}
                     className={`w-full pl-10 p-3 border-2 rounded-xl transition-all duration-200 focus:outline-none ${
                       paymentError && !serviceAmount ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-200' : 'border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200'
@@ -491,7 +668,6 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
                     onClick={() => {
                       setPaymentMethod('cash');
                       setPaymentError('');
-                      console.log('Payment method set to cash'); // Debug log
                     }}
                     className={`flex-1 p-3 rounded-xl border-2 transition-all duration-200 flex items-center justify-center space-x-2 ${
                       paymentMethod === 'cash'
@@ -617,7 +793,6 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
               )}
             </div>
 
-            {/* Button Container */}
             <div className="mt-6 flex flex-row gap-3 justify-end sticky bottom-0 bg-white z-10 p-4">
               <button
                 onClick={() => setShowPaymentModal(false)}
@@ -647,6 +822,17 @@ const TaskCompletionModal: React.FC<CompletionModalProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        onConfirm={dialogConfig.onConfirm}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        type={dialogConfig.type}
+        confirmText="Confirm"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

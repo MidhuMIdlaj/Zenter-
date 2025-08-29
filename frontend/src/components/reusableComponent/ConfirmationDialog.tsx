@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type DialogType = 'danger' | 'success' | 'info' | 'warning';
 
@@ -96,81 +97,97 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
-      />
-      
-      {/* Dialog */}
-      <div className="relative w-full max-w-md transform transition-all duration-300 ease-out">
-        <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-          {/* Header with close button */}
-          {showCloseButton && (
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={onClose}
-                className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-          
-          {/* Content */}
-          <div className="p-8">
-            {/* Icon */}
-            <div className="flex justify-center mb-6">
-              <div className={`p-4 rounded-full border-2 ${getIconBackground()}`}>
-                {getIcon()}
-              </div>
-            </div>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={onClose}
+            />
             
-            {/* Title */}
-            <div className="text-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 leading-tight">
-                {title}
-              </h3>
-            </div>
-            
-            {/* Message */}
-            <div className="text-center mb-8">
-              {typeof message === 'string' ? (
-                <p className="text-gray-600 leading-relaxed">
-                  {message}
-                </p>
-              ) : (
-                <div className="text-gray-600">
-                  {message}
+            {/* Dialog */}
+            <motion.div
+              className="relative w-full max-w-md"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            >
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+                {/* Header with close button */}
+                {showCloseButton && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <button
+                      onClick={onClose}
+                      className="p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+                
+                {/* Content */}
+                <div className="p-8">
+                  {/* Icon */}
+                  <div className="flex justify-center mb-6">
+                    <div className={`p-4 rounded-full border-2 ${getIconBackground()}`}>
+                      {getIcon()}
+                    </div>
+                  </div>
+                  
+                  {/* Title */}
+                  <div className="text-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 leading-tight">
+                      {title}
+                    </h3>
+                  </div>
+                  
+                  {/* Message */}
+                  <div className="text-center mb-8">
+                    {typeof message === 'string' ? (
+                      <p className="text-gray-600 leading-relaxed">
+                        {message}
+                      </p>
+                    ) : (
+                      <div className="text-gray-600">
+                        {message}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button
+                      onClick={onClose}
+                      className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 focus:outline-none transition-all duration-200"
+                    >
+                      {cancelText}
+                    </button>
+                    <button
+                      onClick={handleConfirm}
+                      className={`flex-1 px-6 py-3 text-sm font-medium text-white rounded-xl focus:ring-4 focus:outline-none transition-all duration-200 shadow-lg ${getConfirmButtonStyles()}`}
+                    >
+                      {confirmText}
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <button
-                onClick={onClose}
-                className="flex-1 px-6 py-3 text-sm font-medium text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 focus:ring-4 focus:ring-gray-100 focus:outline-none transition-all duration-200"
-              >
-                {cancelText}
-              </button>
-              <button
-                onClick={handleConfirm}
-                className={`flex-1 px-6 py-3 text-sm font-medium text-white rounded-xl focus:ring-4 focus:outline-none transition-all duration-200 shadow-lg ${getConfirmButtonStyles()}`}
-              >
-                {confirmText}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 };
 

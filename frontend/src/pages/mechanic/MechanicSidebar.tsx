@@ -7,8 +7,6 @@ import { selectEmployeeAuthData } from '../../store/selectors';
 import { clearEmployeeAuth } from '../../store/EmployeeAuthSlice';
 import ConfirmationDialog from '../../components/reusableComponent/ConfirmationDialog';
 import { io, Socket } from 'socket.io-client';
-import { markAllChatNotificationsRead, NotificationService } from '../../api/NotificationService/NotificationService';
-import { motion } from 'framer-motion';
 
 interface MechanicSidebarProps {
   activePage: string;

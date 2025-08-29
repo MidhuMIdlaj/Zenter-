@@ -294,7 +294,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
               setExpandedItems({});
               await new Promise(resolve => requestAnimationFrame(resolve));
               navigate('/admin/profilePage');
-              if (onClose) onClose(); // Close sidebar on mobile after navigation
+              if (onClose) onClose();
             }}
             className="w-full flex items-center justify-center space-x-2 px-5 py-3 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
           >

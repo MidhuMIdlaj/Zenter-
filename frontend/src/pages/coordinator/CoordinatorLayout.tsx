@@ -391,7 +391,6 @@ const CoordinatorLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Toast Container - Must be at root level */}
        <ToastContainer
         position="top-right"
         autoClose={5000}
