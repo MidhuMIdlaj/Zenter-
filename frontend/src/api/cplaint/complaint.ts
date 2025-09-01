@@ -44,7 +44,6 @@ export const getComplaintsByCoordinator = async () => {
         'Content-Type': 'application/json'
       }
     });
-    console.log(response.data, 'response.data')
     return response.data.complaints || []
   } catch (error) {
     console.error('Error fetching coordinator complaints:', error);
@@ -66,7 +65,6 @@ export const validateAdminCoordinatorEmail = async (email: string): Promise<any>
 
 
 export const createComplaint = async (complaintData: ComplaintFormData) => {
-  console.log(complaintData, 'complaintData in createComplaint')
   const response = await axiosInstance.post(`${API_URL}/createComplaint`, complaintData);
   return response.data.data;
 };
@@ -112,7 +110,6 @@ export const getMechanicComplaints = async (mechanicId: string | undefined): Pro
 };
 // Accept a complaint assignment
 export const acceptComplaint = async (complaintId: string, mechanicId: string): Promise<Complaint> => {
-  console.log(complaintId, "12312")
   const response = await axiosInstance.post(`${API_URL}/acceptComplaint/${complaintId}`, { mechanicId });
   return {
     ...response.data,
@@ -194,7 +191,6 @@ export const updateComplaintStatus = async (
   mechanicId: string,
 ) => {
   try {
-    console.log(complaintId, newStatus, mechanicId, 'updateComplaintStatus')
     const response = await axiosInstance.put(`${API_URL}/updateComplaint/${complaintId}`, {
       status: newStatus,
       mechanicId,

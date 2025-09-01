@@ -80,7 +80,6 @@ const ComplaintFormStep2: React.FC<ComplaintFormStep2Props> = ({
             });
             
             setNormalizedProducts(products);
-            console.log("Normalized products:", products);
         } else {
             setNormalizedProducts([]);
         }
@@ -88,10 +87,6 @@ const ComplaintFormStep2: React.FC<ComplaintFormStep2Props> = ({
 
     // Handle product selection when selectedProductId changes
     useEffect(() => {
-        console.log("FormData products:", formData.products); // Debug log
-        console.log("Selected product ID:", formData.selectedProductId); // Debug log
-        console.log("Normalized products:", normalizedProducts); // Debug log
-
         if (normalizedProducts.length > 0) {
             if (formData.selectedProductId) {
                 // Try to find product by selectedProductId
@@ -101,13 +96,11 @@ const ComplaintFormStep2: React.FC<ComplaintFormStep2Props> = ({
                     p.tempId === formData.selectedProductId
                 );
                 
-                console.log("Found product:", product); // Debug log
                 
                 if (product) {
                     setSelectedProduct(product);
                     setShowProductSelect(false);
                 } else {
-                    console.warn("Selected product ID exists but product not found");
                     setShowProductSelect(true);
                 }
             } else {
@@ -118,7 +111,6 @@ const ComplaintFormStep2: React.FC<ComplaintFormStep2Props> = ({
     }, [normalizedProducts, formData.selectedProductId]);
 
    const handleProductSelect = (productId: string) => {
-  console.log("Product selected:", productId); 
   const product = normalizedProducts.find(p => 
     p.id === productId || p._id === productId || p.tempId === productId
   );
@@ -195,9 +187,6 @@ const ComplaintFormStep2: React.FC<ComplaintFormStep2Props> = ({
     };
 
     const safeGetProductValue = (product: any, propertyPath: string, defaultValue: string = 'N/A') => {
-        console.log("Getting product value for path:", propertyPath);
-        console.log("Product data:", product);
-        console.log("Default value:", defaultValue);
         if (!product) return defaultValue;
         
         try {

@@ -40,7 +40,6 @@ const ComplaintCard: React.FC<ComplaintCardProps> = ({
   };
 
   const handleComplete = () => {
-    console.log(complaint._id , 'complaint._id');
     if (onComplete) onComplete(complaint._id);
   };
 

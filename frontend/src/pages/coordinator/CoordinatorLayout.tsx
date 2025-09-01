@@ -231,11 +231,9 @@ const CoordinatorLayout = () => {
         );
 
         if (isDuplicate) {
-          console.log('Duplicate notification detected, skipping');
           return prev;
         }
 
-        console.log('Adding new notification:', normalizedNotification);
         return [normalizedNotification, ...prev];
       });
 

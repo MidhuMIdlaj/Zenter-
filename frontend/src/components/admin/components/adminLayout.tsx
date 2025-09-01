@@ -28,15 +28,11 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
     });
 
     socket.on("connect", () => {
-      console.log("Socket connected in AdminLayout:", socket.id);
       socket.emit("join_user_room", userId);
     });
 
     socket.on("new_chat_notification", (notification: any) => {
-      console.log(
-        "Received new_chat_notification in AdminLayout:",
-        notification
-      );
+     
 
       const toastId = `notification_${notification._id}`;
       if (!toast.isActive(toastId)) {
@@ -78,7 +74,6 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
     });
 
     socket.on("disconnect", () => {
-      console.log("Socket disconnected in AdminLayout");
     });
 
     return () => {

@@ -84,7 +84,6 @@ const Home = () => {
     } else {
       // Fallback: If Chatling API is not available, let the script handle it
       // This might open the chat widget automatically when the button is clicked
-      console.log('Chatling API not available yet');
     }
   };
 

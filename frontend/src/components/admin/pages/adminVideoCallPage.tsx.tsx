@@ -47,7 +47,6 @@ export default function AdminVideoCallPage() {
     const fetchHistory = async () => {
       try {
         const response = await VideoCallService.getCallHistory();
-        console.log(response, "q342342345")
         setHistory(response.data);
       } catch (err) {
         console.error('Error fetching call history:', err);

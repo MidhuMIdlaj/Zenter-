@@ -1,14 +1,12 @@
 export const formatDateForInput = (dateString: string | Date): string => {
   if (!dateString) return '';
   
-  console.log(dateString, "23456")
   if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
     return dateString;
   }
 
   const date = new Date(dateString);
   if (isNaN(date.getTime())) {
-    console.warn('Invalid date:', dateString);
     return '';
   }
 

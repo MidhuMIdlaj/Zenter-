@@ -96,7 +96,6 @@ const ComplaintTable: React.FC = () => {
     setIsRefreshing(true);
     try {
       const data = await getAllComplaint();
-      console.log("Raw complaint data:", data); // Debug log
       
       let complaintsArray: ComplaintResponse[] = [];
       
@@ -146,7 +145,6 @@ const ComplaintTable: React.FC = () => {
   const loadCoordinator = async()=>{
     try {
       const coordinator = await fetchCoordinatorEmails();
-      console.log("Coordinator data:", coordinator); 
       setCoordinator(coordinator || [])
     } catch (error) {
       console.error("Failed to fetch coordinators:", error);
@@ -157,9 +155,7 @@ const ComplaintTable: React.FC = () => {
 
   const loadMechanics = async () => {
     try {
-      console.log("enter")
       const mechanics = await fetchAvailableMechanics();
-      console.log(mechanics, "23213")
       setMechanics(mechanics || []); // Ensure it's always an array
     } catch (error) {
       console.error("Failed to fetch mechanics:", error);
@@ -171,7 +167,6 @@ const ComplaintTable: React.FC = () => {
   const loadCustomerEmails = async () => {
     try {
       const customers = await fetchCustomerEmails();
-      console.log("Customer emails:", customers); // Debug log
       setCustomerEmails(customers || []); 
     } catch (error) {
       console.error("Failed to fetch customer emails:", error);
@@ -181,13 +176,11 @@ const ComplaintTable: React.FC = () => {
   
   const applyFilters = () => {
     if (!Array.isArray(complaints)) {
-      console.warn("Complaints is not an array:", complaints);
       setFilteredComplaints([]);
       return;
     }
 
     let result = [...complaints];
-    console.log("Applying filters to complaints:", result); // Debug log
 
     result = result.filter((comp) => {
       if (comp.isDeleted === undefined || comp.isDeleted === null) {

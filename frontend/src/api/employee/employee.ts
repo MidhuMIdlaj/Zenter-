@@ -9,7 +9,6 @@ export const EmployeeAPI = {
   async getEmployeeProfile(id: string) {
     try {
       const response = await axiosInstance.get(`${API_BASE_URL}/${id}`);
-      console.log(response , "1324")
       return response.data.data;
     } catch (error) {
       console.error('Error fetching employee profile:', error);

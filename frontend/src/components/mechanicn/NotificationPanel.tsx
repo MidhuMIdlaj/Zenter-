@@ -62,25 +62,21 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (!recipientId || !socket) return;
 
     socket.on('connect', () => {
-      console.log('Socket connected in NotificationPanel:', socket.id);
       setConnectionStatus('Connected');
       setDebugInfo((prev: any) => ({ ...prev, socketId: socket.id, connected: true }));
     });
 
     socket.on('connect_error', (error: any) => {
-      console.error('Socket connection error in NotificationPanel:', error);
       setConnectionStatus('Connection Error');
       setDebugInfo((prev: any) => ({ ...prev, error: error.message }));
     });
 
     socket.on('disconnect', (reason: any) => {
-      console.log('Socket disconnected in NotificationPanel:', reason);
       setConnectionStatus('Disconnected');
       setDebugInfo((prev: any) => ({ ...prev, connected: false, disconnectReason: reason }));
     });
 
     socket.on('new_complaint_assigned', (data: Notification) => {
-      console.log('Received new_complaint_assigned in NotificationPanel:', data);
       const newNotification: Notification = {
         _id: data._id || `temp-${Date.now()}`,
         title: data.title || 'New Complaint',

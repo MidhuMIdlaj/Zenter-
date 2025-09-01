@@ -29,7 +29,6 @@ const MechanicDashboard = () => {
   const [activeView, setActiveView] = useState('performance'); 
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const dispatch = useDispatch();
-  console.log(employeeData?.id, "employeeData in MechanicDashboard");
   const mechanicId = employeeData?.id || '';
   
   const [animateStats, setAnimateStats] = useState(false);
@@ -60,7 +59,6 @@ const MechanicDashboard = () => {
           description: complaint.description || '', 
         }));
         setComplaints(formattedData);
-        console.log(formattedData, "formattedData");
       } catch (error) {
         console.error('Error loading complaints:', error);
       } finally {
@@ -95,7 +93,6 @@ const MechanicDashboard = () => {
         return true;
       });
     }
-    console.log(filtered, "filtered");
     setFilteredComplaints(filtered);
   }, [statusFilter, complaints]); 
   

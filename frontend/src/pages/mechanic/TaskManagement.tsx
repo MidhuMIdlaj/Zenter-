@@ -232,7 +232,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
   if (!taskToComplete || !employeeData?.id) return;
   try {
     setActionLoading(taskToComplete.id);
-    console.log(completionData, "completionData");
     const formData = new FormData();
     formData.append('taskId', taskToComplete.id);
     formData.append('mechanicId', employeeData.id);
@@ -251,7 +250,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
       completionData.amount,
       completionData.photos,
     );
-    console.log(result, "completeTask result");
     setTasks(prevTasks => 
       prevTasks.map(task => 
         task.id === taskToComplete.id 
@@ -292,7 +290,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
       }
     }, 500);
   };
-  console.log(tasks , "23452435345")
   const filteredTasks = tasks.filter(task => {
     switch (activeTab) {
       case 'pending':
@@ -586,7 +583,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
     inprogress: tasks.filter(t => t.workingStatus === 'accept' || t.workingStatus === 'processing').length,
     completed: tasks.filter(t => t.workingStatus === 'completed' || t.workingStatus === 'rejected').length
   };
-    console.log(selectedTask, 'selectedTask');
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-8">

@@ -16,7 +16,6 @@ export const EmployeeLoginApi = async (
         { email, password },
         { withCredentials: true }
       );
-      console.log(response , "123")
       return response;
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {

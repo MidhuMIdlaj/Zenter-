@@ -41,7 +41,6 @@ export default function Header({ userName, userRole, checkedIn, setCheckedIn, no
           <div className="relative">
             <button
               onClick={() => {
-                console.log('Notification button clicked, opening modal');
                 onNotificationClick();
               }}
               className="p-2 rounded-full hover:bg-indigo-800 transition-colors duration-200 focus:outline-none"

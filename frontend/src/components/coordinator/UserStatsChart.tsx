@@ -21,9 +21,7 @@ export default function UserStatsChart() {
     const fetchUserData = async () => {
       try {
         const res = await ClientListApi();
-        console.log(res, 'response in user stats chart');
         const response = res.clients;
-        console.log(response, 'response in user stats chart');
         if (response && Array.isArray(response)) {
           const totalUsers = response.length;
           const activeUsers = response.filter(user => user.status ===  'active' ).length;

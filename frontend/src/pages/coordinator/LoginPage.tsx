@@ -23,7 +23,6 @@ const EmployeeLogin: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const handleReset = () => {
-    console.log("hi")
     navigate('/reset-password');
   };
   const [isPageLoaded, setIsPageLoaded] = useState<boolean>(false);
@@ -73,7 +72,6 @@ const EmployeeLogin: React.FC = () => {
           if (response.status === 200 && response.data) {
               const { token, id, position, employeeName } = response.data    
             dispatch(setEmployeeAuth({token, id, position, employeeName }));
-            console.log("Login successful:", position);
             
             if (position === "mechanic") {
               navigate('/mechanic/dashboard');

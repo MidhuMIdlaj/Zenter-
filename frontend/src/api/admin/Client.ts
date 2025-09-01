@@ -27,7 +27,6 @@ export const ClientListApi = async (page: number = 1, limit: number = 10) => {
     const response = await axiosInstance.get(`${API_BASE_URL}/getAllClients`, {
       params: { page, limit }
     });
-    console.log(response , "2352345")
     return response.data;
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -39,7 +38,6 @@ export const ClientListApi = async (page: number = 1, limit: number = 10) => {
 
 export const UpdateClientStatusApi = async (clientId: string, status: string): Promise<any> => {
   try {
-    console.log(clientId)
     const response = await axiosInstance.patch(
       `${API_BASE_URL}/updateStatusClient/${clientId}`,
       { status },
@@ -49,7 +47,6 @@ export const UpdateClientStatusApi = async (clientId: string, status: string): P
         },
       }
     );
-    console.log("Update Status API response", response.data);
     return response.data;
   } catch (error) {
     console.error("Update Status API error", error);
@@ -88,7 +85,6 @@ export const getClientById = async (clientId: string): Promise<any> => {
         },
       }
     );
-    console.log(response, "2")
     return response.data;
   } catch (error: any) {
     console.error("Get Client API error", error);
@@ -97,10 +93,8 @@ export const getClientById = async (clientId: string): Promise<any> => {
 };
 export const softDeleteClientApi = async (clientId: string): Promise<any> => {
   try {
-    console.log(clientId , "123")
     const url = `${API_BASE_URL}/softDeleteUser/${clientId}`;
-    console.log('Attempting to call:', url);
-
+   
     const response = await axiosInstance.patch(url, {}, {
       headers: {
         'Content-Type': 'application/json',
@@ -108,7 +102,6 @@ export const softDeleteClientApi = async (clientId: string): Promise<any> => {
       validateStatus: (status) => status < 500  
     });
 
-    console.log('Response received:', response);
     
     if (response.status === 404) {
       throw new Error(`Endpoint not found: ${url}`);
@@ -132,7 +125,6 @@ export const searchClientsApi = async (
   limit: number
 ) => {
   try {
-    console.log(searchTerm , "234" , page, "123234" , limit , "345")
     const response = await axiosInstance.get(`${API_BASE_URL}/search`, {
       params: {
         searchTerm,
@@ -141,7 +133,6 @@ export const searchClientsApi = async (
         limit
       }
     });
-    console.log(response , "q234235346")
     return response.data;
   } catch (error) {
     console.error('Error searching clients:', error);

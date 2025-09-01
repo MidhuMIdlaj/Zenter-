@@ -95,7 +95,6 @@ const AdminCoordinatorChat: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
   const { adminData } = useSelector(selectAdminAuthData);
   const userId = adminData?.id;
-  console.log("Admin Data:", adminData);
   const token = adminData?.token;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -116,7 +115,6 @@ const AdminCoordinatorChat: React.FC = () => {
       return [...prev, newMessage];
     };
   };
-  console.log("User ID:", userId);
 
   const updateOptimisticMessage = (tempId: string, realMessage: ChatMessage) => {
     setMessages(prev => 
@@ -298,8 +296,6 @@ const AdminCoordinatorChat: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log("Fetching coordinators...");
-        console.log(userId, "User ID");
         const response = await fetchEmployees(1, 10);
         const employees = response.data.employees || [];
         const coordinatorsWithMessages = await Promise.all(
@@ -433,7 +429,6 @@ const AdminCoordinatorChat: React.FC = () => {
       // Add optimistic message
       setMessages(prev => addMessageSafely(formatMessage(tempMessage))(prev));
 
-      console.log("Sending message:", tempMessage, filesToSend);
       const savedMessage = await ChatService.sendMessage(tempMessage, filesToSend);
       
       // Update optimistic message with real message data

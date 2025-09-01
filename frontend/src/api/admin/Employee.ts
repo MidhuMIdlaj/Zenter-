@@ -130,7 +130,6 @@ export const updateEmployee = async (
 // Delete Employee
 export const deleteEmployee = async (id: string): Promise<void> => {
   try {
-    console.log()
     await axiosInstance.patch(
       `${API_BASE_URL}/softDeleteEmployee/${id}`
     );
@@ -150,7 +149,6 @@ export const updateEmployeeStatus = async (
       `${API_BASE_URL}/updateEmployeeStatus/${id}`,
       { status }
     );
-    console.log(response, "res")
     return response.data;
   } catch (error) {
     console.error("Update Status Error:", error);

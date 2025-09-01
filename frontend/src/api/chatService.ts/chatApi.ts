@@ -18,7 +18,6 @@ export const ChatService = {
 // Send a new message
 sendMessage: async (messageData: any, files: File[] = []) => {
   try {
-    console.log("Sending message with data:", messageData);
     const formData = new FormData();
     
     // Append fields directly
@@ -37,7 +36,6 @@ sendMessage: async (messageData: any, files: File[] = []) => {
       formData.append('attachments', file); // Match multer field name
     });
 
-    console.log("FormData contents:", { senderId: messageData.senderId, receiverId: messageData.receiverId, text: messageData.text, conversationId: messageData.conversationId, messageType: messageData.messageType, files });
 
     const response = await axiosInstance.post(`${API_BASE_URL}/messages`, formData, {
       headers: {

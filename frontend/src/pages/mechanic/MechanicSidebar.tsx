@@ -154,7 +154,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     });
 
     newSocket.on('connect', () => {
-      console.log('Mechanic sidebar socket connected');
       newSocket.emit('join_user_room', userId);
       newSocket.emit('join_role_room', 'mechanic');
     });
@@ -188,7 +187,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     });
 
     newSocket.on('new_video_call_notification', (notification) => {
-      console.log(notification, "1234")
       
      if (notification.recipientType === 'mechanic') {
       if ('vibrate' in navigator) navigator.vibrate(200);

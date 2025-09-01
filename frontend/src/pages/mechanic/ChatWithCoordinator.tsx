@@ -104,10 +104,8 @@ const ChatWithCoordinators: React.FC = () => {
            Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
       );
       if (exists) {
-        console.log(`Ignoring duplicate message: ${newMessage.id}`);
         return prev;
       }
-      console.log(`Adding new message: ${newMessage.id}`);
       return [...prev, newMessage];
     });
   };
@@ -213,10 +211,8 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('Socket connected successfully');
       setSocketConnected(true);
       socketRef.current?.emit('join_user_room', userId, () => {
-        console.log(`Joined room for user: ${userId}`);
       });
     });
 
@@ -226,19 +222,16 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log('Socket disconnected');
       setSocketConnected(false);
     });
 
     socketRef.current.on('new_message', (message: ChatMessage) => {
-      console.log('Received new_message:', message);
       const conversationId = message.conversationId;
       const isCurrentConversation =
         selectedCoordinator &&
         conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
 
       if (!isCurrentConversation) {
-        console.log(`Updating unread count for conversation: ${conversationId}`);
         setUnreadConversations((prev) => ({
           ...prev,
           [conversationId]: (prev[conversationId] || 0) + 1,
@@ -269,7 +262,6 @@ const ChatWithCoordinators: React.FC = () => {
           (msg) => msg.isOptimistic && msg.id === `temp-${message.id || message.id}`
         );
         if (optimisticIndex !== -1) {
-          console.log(`Replacing optimistic message: ${message.id || message.id}`);
           const updatedMessages = [...prev];
           updatedMessages[optimisticIndex] = formattedMessage;
           return updatedMessages;
@@ -282,7 +274,6 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('message_delivered', ({ messageId }) => {
-      console.log('Message delivered:', messageId);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === messageId ? { ...msg, isDelivered: true } : msg
@@ -291,7 +282,6 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('message_read', ({ messageId }) => {
-      console.log('Message read:', messageId);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === messageId ? { ...msg, isRead: true } : msg
@@ -300,7 +290,6 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('messages_read', ({ conversationId }) => {
-      console.log('Messages read for conversation:', conversationId);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.conversationId === conversationId && !msg.isRead
@@ -311,7 +300,6 @@ const ChatWithCoordinators: React.FC = () => {
     });
 
     socketRef.current.on('receive_typing', ({ conversationId, userId: typingUserId }) => {
-      console.log('Typing event received:', { conversationId, typingUserId });
       if (
         selectedCoordinator &&
         conversationId === [userId, selectedCoordinator.employeeId].sort().join('_') &&
@@ -433,16 +421,13 @@ const ChatWithCoordinators: React.FC = () => {
         formatMessage(tempMessage),
       ]);
 
-      console.log('Sending temp message:', tempMessage);
       const savedMessage = await ChatService.sendMessage(tempMessage, selectedFiles);
 
-      console.log('Server-confirmed message:', savedMessage);
       updateOptimisticMessage(tempId, savedMessage);
 
       if (socketRef.current) {
         socketRef.current.emit('send_message', savedMessage, (deliveryConfirmation: any) => {
           if (deliveryConfirmation?.success) {
-            console.log('Delivery confirmation received:', savedMessage._id || savedMessage.id);
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === tempId

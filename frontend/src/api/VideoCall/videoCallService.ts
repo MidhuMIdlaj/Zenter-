@@ -7,7 +7,6 @@ const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
 export const VideoCallService = {
   sendInvitations: async (callLink: string, initiatorId: string , initiatorName : string) => {
     try {
-      console.log('Sending video call invitations:', { callLink, initiatorId });
       const response = await axiosInstance.post(`${API_BASE_URL}/video-call/send-invitations`, {
         callLink,
         initiatorId,

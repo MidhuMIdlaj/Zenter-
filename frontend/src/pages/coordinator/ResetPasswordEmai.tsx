@@ -100,7 +100,6 @@ export default function PasswordResetPage() {
     setIsSubmitting(true);
     try {
       const response = await VerifyOtpApi(email, otp);
-      console.log('OTP verification response:', response);
       if (response.status === 200) {
         setOtpVerified(true);
         setStep(3);
@@ -138,7 +137,6 @@ export default function PasswordResetPage() {
     
     try {
       const response = await ResetPasswordApi(email,  password);
-      console.log('Password reset response:', response);    
       if (response.status === 200) {
         toast.success('Password reset successfully!');
         navigate("/employee-login")

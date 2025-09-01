@@ -69,7 +69,6 @@ export default function VideoCallJoinPage() {
       };
 
       await VideoCallService.updateParticipants(roomID, [participant]);
-      console.log(`[VideoCallJoinPage] Participant joined: ${employeeId}`);
     } catch (err) {
       console.error('[VideoCallJoinPage] Failed to update participant join time:', err);
     }
@@ -91,7 +90,6 @@ export default function VideoCallJoinPage() {
       };
 
       await VideoCallService.updateParticipants(roomID, [participant]);
-      console.log(`[VideoCallJoinPage] Participant left: ${employeeId}`);
     } catch (err) {
       console.error('[VideoCallJoinPage] Failed to update participant leave time:', err);
     }
@@ -101,7 +99,6 @@ export default function VideoCallJoinPage() {
     await updateLeftTime();
 
     const dashboardPath = getDashboardPath();
-    console.log(`[VideoCallJoinPage] Call ended, redirecting to: ${dashboardPath}`);
     navigate(dashboardPath);
   };
 

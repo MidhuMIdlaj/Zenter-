@@ -128,7 +128,6 @@ const CoordinatorComplaintTable: React.FC = () => {
     const loadCoordinator = async()=>{
       try {
         const coordinator = await fetchCoordinatorEmails();
-        console.log("Coordinator data:", coordinator); 
         setCoordinator(coordinator || [])
       } catch (error) {
         console.error("Failed to fetch coordinators:", error);
@@ -143,13 +142,11 @@ const CoordinatorComplaintTable: React.FC = () => {
     setIsRefreshing(true);
     try {
       const complaints = await getComplaintsByCoordinator();
-      console.log("Fetched complaints:", complaints);
       
       const activeComplaints = Array.isArray(complaints) 
         ? complaints.filter(comp => !comp.isDeleted) 
         : [];
       
-      console.log("Active complaints:", activeComplaints);
       setComplaints(activeComplaints);
       setFilteredComplaints(activeComplaints);
       setTotalItems(activeComplaints.length);

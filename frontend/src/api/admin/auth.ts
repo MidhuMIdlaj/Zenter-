@@ -33,7 +33,6 @@ export const AdminLoginApi = async (
         { email, password },
         { withCredentials: true }
       );
-      console.log(response, "response from admin login api");
       return response
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {

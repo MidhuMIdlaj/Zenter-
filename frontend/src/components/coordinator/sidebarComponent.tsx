@@ -20,7 +20,6 @@ export default function Sidebar({ activeTab, handleLogout, unreadCount, socket }
 
   useEffect(() => {
     if (location.pathname === '/employee-chat' && userId && socket) {
-      console.log('Navigated to /employee-chat, emitting mark_all_chat_notifications_read');
       localStorage.setItem('coordinatorUnreadChat', '0');
       socket.emit('mark_all_chat_notifications_read', { userId });
     }

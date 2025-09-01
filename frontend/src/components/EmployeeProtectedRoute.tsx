@@ -24,17 +24,14 @@ const EmployeeProtectedRoute = ({ children, allowedPositions }: EmployeeProtecte
   }
 
   if (!isAuthenticated || !employeeData) {
-    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/employee-login" replace />;
   }
 
   if (allowedPositions && !allowedPositions.some(pos => 
     employeeData.position.toLowerCase().includes(pos.toLowerCase()))) {
-    console.log('Position not allowed:', employeeData?.position);
     return <Navigate to="/unauthorized" replace />;
   }
 
-  console.log('Auth Check:', { isAuthenticated, employeeData });
 
   return <>{children}</>;
 };

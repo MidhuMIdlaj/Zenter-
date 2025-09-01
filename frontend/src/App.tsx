@@ -14,7 +14,6 @@ const AuthInitializer = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     dispatch(setLoading(false));
     persistor.flush().then(() => {
-      console.log('Persisted state flushed');
     });
   }, [dispatch]);
   return <>{children}</>;

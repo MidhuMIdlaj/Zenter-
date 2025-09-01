@@ -77,7 +77,6 @@ const EmployeeTable: React.FC = () => {
     setEmployees(data.employees || []);
     setTotalItems(data.pagination?.total || 0);
     setTotalPages(data.pagination?.totalPages || 1);
-    console.log(`Pagination: Page ${page} of ${data.pagination?.totalPages}, ${data.pagination?.total} total items`);
   } catch (error) {
     console.error("Failed to fetch employees:", error);
     toast.error("Failed to load employees");

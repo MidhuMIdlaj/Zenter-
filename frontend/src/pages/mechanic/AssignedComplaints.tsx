@@ -23,11 +23,9 @@ const AssignedComplaintsList: React.FC<AssignedComplaintsListProps> = ({
 
   // Filter to only show pending complaints for this mechanic
   const pendingComplaints = complaints.filter(complaint => {
-    console.log(`Complaint ${complaint._id}: workingStatus = ${complaint.workingStatus}, assignedMechanicId = ${complaint.assignedMechanicId}, mechanicId = ${mechanicId}`);
     return complaint.workingStatus === 'pending' && complaint.assignedMechanicId === mechanicId;
   });
 
-  console.log('AssignedComplaintsList rendered with mechanicId:', pendingComplaints.map(c => c.workingStatus))
 
   const handleAccept = async (complaint: Complaint) => {
     try {

@@ -66,7 +66,6 @@ const MechanicLayout = () => {
     });
 
     newSocket.on('connect', () => {
-      console.log('Socket connected in MechanicLayout:', newSocket.id);
       newSocket.emit('join_user_room', userId);
       newSocket.emit('join_role_room', 'mechanic');
       setSocket(newSocket);
@@ -77,7 +76,6 @@ const MechanicLayout = () => {
     });
 
     newSocket.on('new_complaint_assigned', (data: Notification) => {
-      console.log('Received new_complaint_assigned:', data);
       setNotifications((prev) => {
         if (prev.some((n) => n._id === data._id)) return prev;
         return [{ ...data, type: 'complaint' }, ...prev];
@@ -117,7 +115,6 @@ const MechanicLayout = () => {
     });
 
     newSocket.on('new_message', (data: Notification) => {
-      console.log('Received new_message in MechanicLayout:', data);
       if (data.senderRole !== 'coordinator' || location.pathname === '/mechanic/chat') return;
       const newNotification: Notification = {
         _id: data._id || `message-${Date.now()}`,
@@ -172,7 +169,6 @@ const MechanicLayout = () => {
     });
 
     newSocket.on('chat_notifications_read', () => {
-      console.log('Received chat_notifications_read in MechanicLayout');
       setUnreadCount((prev) => Math.max(0, prev - 1));
       setGlobalUnreadCount((prev) => Math.max(0, prev - 1));
       localStorage.setItem('mechanicUnreadCount', Math.max(0, globalUnreadCount - 1).toString());
@@ -180,7 +176,6 @@ const MechanicLayout = () => {
     });
 
     newSocket.on('all_chat_notifications_read', () => {
-      console.log('Received all_chat_notifications_read in MechanicLayout');
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
       setGlobalUnreadCount(0);
@@ -189,7 +184,6 @@ const MechanicLayout = () => {
     });
 
     return () => {
-      console.log('Cleaning up socket in MechanicLayout');
       newSocket.off('new_complaint_assigned');
       newSocket.off('new_message');
       newSocket.off('chat_notifications_read');

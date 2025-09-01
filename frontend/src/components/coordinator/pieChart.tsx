@@ -8,7 +8,6 @@ interface DataEntry {
 }
 
 export default function ComplaintPieChart({ data }: { data: DataEntry[] }) {
-  console.log(data, 'data in pie chart');
   return (
     <div className="bg-white rounded-lg shadow-md p-6 h-full">
       <div className="flex justify-between items-center mb-4">

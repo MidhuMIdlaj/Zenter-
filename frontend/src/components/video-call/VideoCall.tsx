@@ -42,7 +42,6 @@ export const VideoCall: React.FC<VideoCallProps> = ({
         mode: ZegoUIKitPrebuilt.GroupCall,
       },
       onLeaveRoom: async () => {
-        console.log('[VideoCall] User left the room');
 
         try {
           if (employeeData?.id) {
@@ -53,7 +52,6 @@ export const VideoCall: React.FC<VideoCallProps> = ({
                 leftAt: new Date().toISOString(),
               },
             ]);
-            console.log(`[VideoCall] Updated leftAt for ${employeeData.id}`);
           }
         } catch (error) {
           console.error('Failed to update participant leftAt:', error);
@@ -72,7 +70,6 @@ export const VideoCall: React.FC<VideoCallProps> = ({
         }
       },
       onUserLeave: (users) => {
-        console.log('[VideoCall] Users left:', users);
       },
     });
 

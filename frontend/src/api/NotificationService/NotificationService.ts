@@ -28,7 +28,6 @@ export const NotificationService = {
 
   markChatNotificationAsRead: async (notificationId: string, conversationId: string) => {
     try {
-      console.log('Marking chat notification as read:', { notificationId, conversationId });
       const response = await axiosInstance.post(
         `${API_BASE_URL}/notifications/chat/${notificationId}/mark-read/${conversationId}`
       );
@@ -75,7 +74,6 @@ export const NotificationService = {
           validateStatus: (status: number) => status < 500
         }
       );
-      console.log('getUnreadChatNotifications response:', response.data);
       if (response.data.success) {
         return response.data;
       } else {
@@ -94,7 +92,6 @@ export const getUnreadChatCount = async (userId: string, role: string) => {
       `${API_BASE_URL}/notifications/unread-chat/${userId}`,
       { params: { role } }
     );
-    console.log('getUnreadChatCount response:', response.data);
     return response.data.count || 0;
   } catch (error) {
     console.error("Error fetching unread count:", error);
@@ -104,12 +101,10 @@ export const getUnreadChatCount = async (userId: string, role: string) => {
 
 export const markAllChatNotificationsRead = async (userId: string) => {
   try {
-    console.log('Calling markAllChatNotificationsRead for user:', userId);
     const response = await axiosInstance.post(
       `${API_BASE_URL}/notifications/mark-all-chat-read`,
       { userId }
     );
-    console.log('markAllChatNotificationsRead response:', response.data);
     return response.data.success;
   } catch (error) {
     console.error("Error marking notifications read:", error);
