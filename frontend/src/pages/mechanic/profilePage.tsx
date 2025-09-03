@@ -58,7 +58,7 @@ const MechanicProfile = () => {
     if (!employeeData?.id) return;
     
     try {
-      const response = await EmployeeAPI.updateEmployeeProfile(
+      const updatedEmployee = await EmployeeAPI.updateEmployeeProfile(
         employeeData.id,
         {
           employeeName: formData.employeeName,
@@ -70,10 +70,10 @@ const MechanicProfile = () => {
       
      setProfileData((prev: any) => ({
       ...prev,
-      employeeName: formData.employeeName,
-      contactNumber: formData.contactNumber,
-      address: formData.address,
-      age: formData.age
+      employeeName: updatedEmployee.employeeName,
+      contactNumber: updatedEmployee.contactNumber,
+      address: updatedEmployee.address,
+      age: updatedEmployee.age
       }));
     
      toast.success('Profile updated successfully');
@@ -246,7 +246,7 @@ const MechanicProfile = () => {
                   <DollarSign size={20} className="text-blue-600 mt-1" />
                   <div>
                     <p className="text-sm text-gray-500">Current Salary</p>
-                    <p className="text-gray-800">${profileData.currentSalary}</p>
+                    <p className="text-gray-800">{profileData.currentSalary}</p>
                   </div>
                 </div>
                 

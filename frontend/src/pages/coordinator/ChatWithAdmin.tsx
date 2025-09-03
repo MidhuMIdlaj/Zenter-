@@ -101,9 +101,9 @@ const ChatWithMechanics: React.FC = () => {
         (msg) =>
           msg.id === newMessage.id ||
           (msg.conversationId === newMessage.conversationId &&
-           msg.senderId === newMessage.senderId &&
-           msg.text === newMessage.text &&
-           Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
+            msg.senderId === newMessage.senderId &&
+            msg.text === newMessage.text &&
+            Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
       );
       if (exists) {
         return prev;
@@ -117,102 +117,102 @@ const ChatWithMechanics: React.FC = () => {
       prev.map((msg) =>
         msg.id === tempId
           ? {
-              ...formatMessage(realMessage),
-              id: realMessage.id || realMessage.id,
-              isDelivered: realMessage.isDelivered !== undefined ? realMessage.isDelivered : true,
-            }
+            ...formatMessage(realMessage),
+            id: realMessage.id || realMessage.id,
+            isDelivered: realMessage.isDelivered !== undefined ? realMessage.isDelivered : true,
+          }
           : msg
       )
     );
   };
 
-   const handleEmojiClick = (emojiData: EmojiClickData) => {
-      setNewMessage((prev) => prev + emojiData.emoji);
-      setShowEmojiPicker(false); // Close picker after selection
-    };
-  
+  const handleEmojiClick = (emojiData: EmojiClickData) => {
+    setNewMessage((prev) => prev + emojiData.emoji);
+    setShowEmojiPicker(false); // Close picker after selection
+  };
+
 
   useEffect(() => {
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch all mechanics and admins
-      const employeeResponse = await fetchEmployees(page, 10);
-      const allEmployees = employeeResponse.data.employees || [];
-      
-      const adminResponse = await getAllAdmin(page, 10);
-      const allAdmins = adminResponse.data?.admins || [];
-      // Fetch last messages for mechanics
-      const mechanicsWithMessages = await Promise.all(
-        allEmployees
-          .filter((employee: any) => employee.position?.toLowerCase() === 'mechanic')
-          .map(async (employee: any) => {
+    const loadUsers = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all mechanics and admins
+        const employeeResponse = await fetchEmployees(page, 10);
+        const allEmployees = employeeResponse.data.employees || [];
+
+        const adminResponse = await getAllAdmin(page, 10);
+        const allAdmins = adminResponse.data?.admins || [];
+        // Fetch last messages for mechanics
+        const mechanicsWithMessages = await Promise.all(
+          allEmployees
+            .filter((employee: any) => employee.position?.toLowerCase() === 'mechanic')
+            .map(async (employee: any) => {
+              const history = await ChatService.getChatHistory(
+                userId!,
+                employee.id
+              );
+              const lastMessage = history.length > 0
+                ? history[history.length - 1]
+                : null;
+
+              return {
+                id: employee.id || Math.random() * 1000,
+                name: employee.employeeName || 'Unknown Mechanic',
+                avatar: employee.avatar || employee.employeeName?.slice(0, 2).toUpperCase() || '??',
+                lastMessage: lastMessage?.text || 'No messages yet',
+                time: lastMessage
+                  ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOnline: employee.status === 'available' || employee.status === 'busy',
+                unreadCount: employee.unreadCount || 0,
+                employeeId: employee.id || `MEC_${employee._id}`,
+                location: employee.address || 'Unknown Location',
+                status: employee.status || 'offline',
+                role: 'mechanic',
+              };
+            })
+        );
+        // Fetch last messages for admins
+        const adminsWithMessages = await Promise.all(
+          allAdmins.map(async (admin: any) => {
             const history = await ChatService.getChatHistory(
               userId!,
-              employee.id
+              admin.id
             );
-            const lastMessage = history.length > 0 
-              ? history[history.length - 1] 
+            const lastMessage = history.length > 0
+              ? history[history.length - 1]
               : null;
 
             return {
-              id: employee.id || Math.random() * 1000,
-              name: employee.employeeName || 'Unknown Mechanic',
-              avatar: employee.avatar || employee.employeeName?.slice(0, 2).toUpperCase() || '??',
+              id: admin.id || Math.random() * 1000,
+              name: admin.email || 'Unknown Admin',
+              avatar: admin.avatar || admin.email?.slice(0, 2).toUpperCase() || '??',
               lastMessage: lastMessage?.text || 'No messages yet',
-              time: lastMessage 
+              time: lastMessage
                 ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isOnline: employee.status === 'available' || employee.status === 'busy',
-              unreadCount: employee.unreadCount || 0,
-              employeeId: employee.id || `MEC_${employee._id}`,
-              location: employee.address || 'Unknown Location',
-              status: employee.status || 'offline',
-              role: 'mechanic',
+              isOnline: admin.status === 'available' || admin.status === 'busy',
+              unreadCount: admin.unreadCount || 0,
+              employeeId: admin.id,
+              location: admin.location || 'Admin Office',
+              status: admin.status || 'offline',
+              role: 'admin',
             };
           })
-      );
-      // Fetch last messages for admins
-      const adminsWithMessages = await Promise.all(
-        allAdmins.map(async (admin: any) => {
-          const history = await ChatService.getChatHistory(
-            userId!,
-            admin.id
-          );
-          const lastMessage = history.length > 0 
-            ? history[history.length - 1] 
-            : null;
+        );
+        const combinedUsers = [...mechanicsWithMessages, ...adminsWithMessages];
+        setUsers((prev) => (page === 1 ? combinedUsers : [...prev, ...combinedUsers]));
+        setHasMore(allEmployees.length === 10 || allAdmins.length === 10);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-          return {
-            id: admin.id || Math.random() * 1000,
-            name: admin.email || 'Unknown Admin',
-            avatar: admin.avatar || admin.email?.slice(0, 2).toUpperCase() || '??',
-            lastMessage: lastMessage?.text || 'No messages yet',
-            time: lastMessage 
-              ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOnline: admin.status === 'available' || admin.status === 'busy',
-            unreadCount: admin.unreadCount || 0,
-            employeeId: admin.id,
-            location: admin.location || 'Admin Office',
-            status: admin.status || 'offline',
-            role: 'admin',
-          };
-        })
-      );
-      const combinedUsers = [...mechanicsWithMessages, ...adminsWithMessages];
-      setUsers((prev) => (page === 1 ? combinedUsers : [...prev, ...combinedUsers]));
-      setHasMore(allEmployees.length === 10 || allAdmins.length === 10);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (userId) loadUsers();
-}, [page, userId]);
+    if (userId) loadUsers();
+  }, [page, userId]);
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -221,7 +221,7 @@ const ChatWithMechanics: React.FC = () => {
       socketRef.current.disconnect();
     }
 
-    socketRef.current = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
+    socketRef.current = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000', {
       transports: ['websocket', 'polling'],
       auth: { token },
       withCredentials: true,
@@ -355,116 +355,116 @@ const ChatWithMechanics: React.FC = () => {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-  setIsUploading(true);
-  setUploadProgress(0);
-
-  try {
-    const newAttachments: Attachment[] = files.map((file, index) => ({
-      id: `file-${Date.now()}-${index}`,
-      url: URL.createObjectURL(file),
-      type: file.type,
-      name: file.name,
-      size: file.size,
-      file, // Store the File object for sending
-    }));
-
-    // Simulate upload progress
-    await new Promise((resolve) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
-        setUploadProgress(progress);
-        if (progress >= 100) {
-          clearInterval(interval);
-          resolve(null);
-        }
-      }, 100);
-    });
-
-    setSelectedFiles((prev: any) => [...prev, ...newAttachments]);
-  } catch (error) {
-    console.error('Error handling files:', error);
-  } finally {
-    setIsUploading(false);
+    setIsUploading(true);
     setUploadProgress(0);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
 
-  if (socketRef.current && socketConnected && selectedUser) {
-    socketRef.current.emit('typing', {
-      conversationId: [userId, selectedUser.employeeId].sort().join('_'),
-      userId,
-    });
-  }
-};
+    try {
+      const newAttachments: Attachment[] = files.map((file, index) => ({
+        id: `file-${Date.now()}-${index}`,
+        url: URL.createObjectURL(file),
+        type: file.type,
+        name: file.name,
+        size: file.size,
+        file, // Store the File object for sending
+      }));
 
-  const handleSendMessage = async () => {
-  if (!selectedUser || !userId) return;
-  if (!newMessage.trim() && selectedFiles.length === 0) return;
+      // Simulate upload progress
+      await new Promise((resolve) => {
+        let progress = 0;
+        const interval = setInterval(() => {
+          progress += 10;
+          setUploadProgress(progress);
+          if (progress >= 100) {
+            clearInterval(interval);
+            resolve(null);
+          }
+        }, 100);
+      });
 
-  const conversationId = [userId, selectedUser.employeeId].sort().join('_');
-  const tempId = `temp-${Date.now()}-${Math.random()}`;
-  const tempMessage: ChatMessage = {
-    id: tempId,
-    senderId: userId,
-    receiverId: selectedUser.employeeId,
-    text: newMessage.trim() || undefined,
-    time: new Date().toISOString(),
-    isDelivered: false,
-    isRead: false,
-    messageType: selectedFiles.length > 0 ? 'file' : determineMessageType(newMessage),
-    conversationId,
-    senderRole: 'coordinator',
-    receiverRole: selectedUser.role.toLowerCase(),
-    attachments: selectedFiles.length > 0 ? selectedFiles.map(file => ({
-      url: file.url,
-      type: file.type,
-      name: file.name,
-      size: file.size,
-    })) : undefined,
-    isOptimistic: true,
+      setSelectedFiles((prev: any) => [...prev, ...newAttachments]);
+    } catch (error) {
+      console.error('Error handling files:', error);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    if (socketRef.current && socketConnected && selectedUser) {
+      socketRef.current.emit('typing', {
+        conversationId: [userId, selectedUser.employeeId].sort().join('_'),
+        userId,
+      });
+    }
   };
 
-  try {
-    setNewMessage('');
-    setSelectedFiles([]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const handleSendMessage = async () => {
+    if (!selectedUser || !userId) return;
+    if (!newMessage.trim() && selectedFiles.length === 0) return;
 
-    setMessages((prev) => [...prev, formatMessage(tempMessage)]);
+    const conversationId = [userId, selectedUser.employeeId].sort().join('_');
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    const tempMessage: ChatMessage = {
+      id: tempId,
+      senderId: userId,
+      receiverId: selectedUser.employeeId,
+      text: newMessage.trim() || undefined,
+      time: new Date().toISOString(),
+      isDelivered: false,
+      isRead: false,
+      messageType: selectedFiles.length > 0 ? 'file' : determineMessageType(newMessage),
+      conversationId,
+      senderRole: 'coordinator',
+      receiverRole: selectedUser.role.toLowerCase(),
+      attachments: selectedFiles.length > 0 ? selectedFiles.map(file => ({
+        url: file.url,
+        type: file.type,
+        name: file.name,
+        size: file.size,
+      })) : undefined,
+      isOptimistic: true,
+    };
 
-    const filesToSend = selectedFiles.map((att) => att.file!).filter(Boolean);
-    const savedMessage = await ChatService.sendMessage(tempMessage, filesToSend);
+    try {
+      setNewMessage('');
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
 
-    updateOptimisticMessage(tempId, savedMessage);
+      setMessages((prev) => [...prev, formatMessage(tempMessage)]);
 
-    if (socketRef.current) {
-      socketRef.current.emit('send_message', savedMessage, (deliveryConfirmation: any) => {
-        if (deliveryConfirmation?.success) {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === tempId
-                ? {
+      const filesToSend = selectedFiles.map((att) => att.file!).filter(Boolean);
+      const savedMessage = await ChatService.sendMessage(tempMessage, filesToSend);
+
+      updateOptimisticMessage(tempId, savedMessage);
+
+      if (socketRef.current) {
+        socketRef.current.emit('send_message', savedMessage, (deliveryConfirmation: any) => {
+          if (deliveryConfirmation?.success) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === tempId
+                  ? {
                     ...formatMessage(savedMessage),
                     id: savedMessage._id || savedMessage.id,
                     isDelivered: true,
                     attachments: savedMessage.attachments, // Use server-returned attachments
                   }
-                : msg
-            )
-          );
-        }
-      });
+                  : msg
+              )
+            );
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      setNewMessage(tempMessage.text || '');
+      setSelectedFiles(selectedFiles);
     }
-  } catch (error) {
-    console.error('Error sending message:', error);
-    setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
-    setNewMessage(tempMessage.text || '');
-    setSelectedFiles(selectedFiles);
-  }
-};
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -518,11 +518,10 @@ const ChatWithMechanics: React.FC = () => {
     }
   };
 
- return (
+  return (
     <div className="bg-gradient-to-br from-indigo-50 to-purple-100 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh-12rem)]">
-      <div className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${
-        socketConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-      }`}>
+      <div className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${socketConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
         {socketConnected ? '🟢 Connected' : '🔴 Disconnected'}
       </div>
 
@@ -576,8 +575,8 @@ const ChatWithMechanics: React.FC = () => {
             </div>
           </div>
 
-          <div 
-            className="flex-1 overflow-y-auto p-4 space-y-3" 
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3"
             onScroll={handleScroll}
           >
             {loading && page === 1 ? (
@@ -684,214 +683,212 @@ const ChatWithMechanics: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-indigo-50/50 to-purple-50/30">
-  {messages.map((message, index) => (
-    <div
-      key={`${message.id}-${index}`}
-      className={`flex ${message.senderId === userId ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-      style={{ animationDelay: `${index * 0.1}s` }}
-    >
-      <div className="max-w-xs lg:max-w-md">
-        {message.senderId !== userId && (
-          <div className="text-xs text-gray-500 mb-1 ml-1">
-            {selectedUser?.name}
-          </div>
-        )}
-        <div
-          className={`px-4 py-3 rounded-2xl shadow-sm ${
-            message.senderId === userId
-              ? `bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
-              : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(message.messageType)}`
-          }`}
-        >
-          {message.text && <p className="break-words">{message.text}</p>}
-          {/* Render attachments */}
-          {message.attachments && message.attachments.length > 0 && (
-            <div className="mt-2 space-y-2">
-              {message.attachments.map((attachment, idx) => (
-                <div key={idx} className="border-t pt-2">
-                  {attachment.type.startsWith('image/') ? (
-                    <img
-                      src={attachment.url}
-                      alt={attachment.name}
-                      className="max-w-full rounded-lg"
-                    />
-                  ) : (
-                    <a
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 text-sm text-indigo-500 hover:underline"
-                    >
-                      <Paperclip size={14} />
-                      <span>{attachment.name}</span>
-                      <span>({Math.round(attachment.size / 1024)} KB)</span>
-                    </a>
+            {messages.map((message, index) => (
+              <div
+                key={`${message.id}-${index}`}
+                className={`flex ${message.senderId === userId ? 'justify-end' : 'justify-start'} animate-fadeIn`}
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <div className="max-w-xs lg:max-w-md">
+                  {message.senderId !== userId && (
+                    <div className="text-xs text-gray-500 mb-1 ml-1">
+                      {selectedUser?.name}
+                    </div>
                   )}
+                  <div
+                    className={`px-4 py-3 rounded-2xl shadow-sm ${message.senderId === userId
+                        ? `bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
+                        : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(message.messageType)}`
+                      }`}
+                  >
+                    {message.text && <p className="break-words">{message.text}</p>}
+                    {/* Render attachments */}
+                    {message.attachments && message.attachments.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {message.attachments.map((attachment, idx) => (
+                          <div key={idx} className="border-t pt-2">
+                            {attachment.type.startsWith('image/') ? (
+                              <img
+                                src={attachment.url}
+                                alt={attachment.name}
+                                className="max-w-full rounded-lg"
+                              />
+                            ) : (
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-2 text-sm text-indigo-500 hover:underline"
+                              >
+                                <Paperclip size={14} />
+                                <span>{attachment.name}</span>
+                                <span>({Math.round(attachment.size / 1024)} KB)</span>
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div
+                      className={`flex items-center justify-between mt-2 text-xs ${message.senderId === userId ? 'text-indigo-100' : 'text-gray-500'
+                        }`}
+                    >
+                      <span>{message.time}</span>
+                      {message.senderId === userId && (
+                        <div className="flex items-center ml-2 space-x-0.5">
+                          {message.isOptimistic ? (
+                            <Clock size={14} className="text-gray-400" />
+                          ) : !message.isDelivered ? (
+                            <>
+                              <CheckCheck size={14} className="text-red-500" />
+                              <CheckCheck size={14} className="text-red-500 -ml-1" />
+                            </>
+                          ) : message.isRead ? (
+                            <>
+                              <CheckCheck size={14} className="text-green-500" />
+                              <CheckCheck size={14} className="text-green-500 -ml-1" />
+                            </>
+                          ) : (
+                            <>
+                              <CheckCheck size={14} className="text-gray-500" />
+                              <CheckCheck size={14} className="text-gray-500 -ml-1" />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-          <div
-            className={`flex items-center justify-between mt-2 text-xs ${
-              message.senderId === userId ? 'text-indigo-100' : 'text-gray-500'
-            }`}
-          >
-            <span>{message.time}</span>
-            {message.senderId === userId && (
-              <div className="flex items-center ml-2 space-x-0.5">
-                {message.isOptimistic ? (
-                  <Clock size={14} className="text-gray-400" />
-                ) : !message.isDelivered ? (
-                  <>
-                    <CheckCheck size={14} className="text-red-500" />
-                    <CheckCheck size={14} className="text-red-500 -ml-1" />
-                  </>
-                ) : message.isRead ? (
-                  <>
-                    <CheckCheck size={14} className="text-green-500" />
-                    <CheckCheck size={14} className="text-green-500 -ml-1" />
-                  </>
-                ) : (
-                  <>
-                    <CheckCheck size={14} className="text-gray-500" />
-                    <CheckCheck size={14} className="text-gray-500 -ml-1" />
-                  </>
-                )}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-gray-100">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
-        </div>
-      </div>
-    </div>
-  ))}
-  {isTyping && (
-    <div className="flex justify-start">
-      <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3 shadow-sm border border-gray-100">
-        <div className="flex space-x-1">
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-        </div>
-      </div>
-    </div>
-  )}
-  <div ref={messagesEndRef} />
-</div>
 
           <div className="bg-white/90 backdrop-blur-sm border-t border-indigo-100 p-4">
-  {/* Attachments preview */}
-  {selectedFiles.length > 0 && (
-    <div className="flex flex-wrap gap-2 mb-3">
-      {selectedFiles.map((attachment) => (
-        <div key={attachment.id} className="relative group">
-          {attachment.type.startsWith('image/') ? (
-            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
-              <img
-                src={attachment.url}
-                alt={attachment.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="w-16 h-16 rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50">
-              <div className="text-center p-1">
-                <Paperclip size={14} className="mx-auto text-gray-500" />
-                <p className="text-xs text-gray-600 truncate w-14">{attachment.name}</p>
+            {/* Attachments preview */}
+            {selectedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedFiles.map((attachment) => (
+                  <div key={attachment.id} className="relative group">
+                    {attachment.type.startsWith('image/') ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={attachment.url}
+                          alt={attachment.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg border border-gray-200 flex items-center justify-center bg-gray-50">
+                        <div className="text-center p-1">
+                          <Paperclip size={14} className="mx-auto text-gray-500" />
+                          <p className="text-xs text-gray-600 truncate w-14">{attachment.name}</p>
+                        </div>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setSelectedFiles((prev) => prev.filter((att) => att.id !== attachment.id))}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
+            )}
+            {/* Upload progress */}
+            {isUploading && (
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                <div
+                  className="bg-indigo-600 h-2 rounded-full"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            )}
+            <div className="flex items-end space-x-3 relative">
+              <div className="flex space-x-1 mb-1 flex-shrink-0">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2 rounded-full hover:bg-indigo-100 transition-colors"
+                >
+                  <Paperclip size={20} className="text-gray-500" />
+                </button>
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-2 rounded-full hover:bg-indigo-100 transition-colors"
+                >
+                  <Smile size={20} className="text-gray-500" />
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
+              </div>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={socketConnected ? 'Type your message...' : 'Connecting...'}
+                  disabled={!socketConnected}
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all disabled:opacity-50"
+                />
+              </div>
+              <button
+                onClick={handleSendMessage}
+                disabled={(!newMessage.trim() && selectedFiles.length === 0) || !socketConnected}
+                className="p-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg flex-shrink-0"
+              >
+                <Send size={18} />
+              </button>
+              {/* Emoji Picker */}
+              {showEmojiPicker && (
+                <div className="absolute bottom-14 left-14 z-10" ref={emojiPickerRef}>
+                  <EmojiPicker
+                    onEmojiClick={handleEmojiClick}
+                    width={300}
+                    height={350}
+                  />
+                </div>
+              )}
             </div>
-          )}
-          <button
-            onClick={() => setSelectedFiles((prev) => prev.filter((att) => att.id !== attachment.id))}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            ×
-          </button>
-        </div>
-      ))}
-    </div>
-  )}
-  {/* Upload progress */}
-  {isUploading && (
-    <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-      <div
-        className="bg-indigo-600 h-2 rounded-full"
-        style={{ width: `${uploadProgress}%` }}
-      ></div>
-    </div>
-  )}
-  <div className="flex items-end space-x-3 relative">
-    <div className="flex space-x-1 mb-1 flex-shrink-0">
-      <button
-        onClick={() => fileInputRef.current?.click()}
-        className="p-2 rounded-full hover:bg-indigo-100 transition-colors"
-      >
-        <Paperclip size={20} className="text-gray-500" />
-      </button>
-      <button
-        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-        className="p-2 rounded-full hover:bg-indigo-100 transition-colors"
-      >
-        <Smile size={20} className="text-gray-500" />
-      </button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileChange}
-        multiple
-        className="hidden"
-        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-      />
-    </div>
-    <div className="flex-1 relative">
-      <input
-        type="text"
-        value={newMessage}
-        onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
-        placeholder={socketConnected ? 'Type your message...' : 'Connecting...'}
-        disabled={!socketConnected}
-        className="w-full px-4 py-3 pr-12 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all disabled:opacity-50"
-      />
-    </div>
-    <button
-      onClick={handleSendMessage}
-      disabled={(!newMessage.trim() && selectedFiles.length === 0) || !socketConnected}
-      className="p-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full hover:from-indigo-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all shadow-lg flex-shrink-0"
-    >
-      <Send size={18} />
-    </button>
-    {/* Emoji Picker */}
-    {showEmojiPicker && (
-      <div className="absolute bottom-14 left-14 z-10" ref={emojiPickerRef}>
-        <EmojiPicker
-          onEmojiClick={handleEmojiClick}
-          width={300}
-          height={350}
-        />
-      </div>
-    )}
-  </div>
-  <div className="flex space-x-2 mt-3">
-    <button
-      onClick={() => setNewMessage('Please update task status')}
-      className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs hover:bg-indigo-200 transition-colors"
-    >
-      Task Update
-    </button>
-    <button
-      onClick={() => setNewMessage('URGENT: ')}
-      className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200 transition-colors"
-    >
-      Urgent
-    </button>
-    <button
-      onClick={() => setNewMessage('Great work! ')}
-      className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200 transition-colors"
-    >
-      Praise
-    </button>
-  </div>
-</div>
+            <div className="flex space-x-2 mt-3">
+              <button
+                onClick={() => setNewMessage('Please update task status')}
+                className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs hover:bg-indigo-200 transition-colors"
+              >
+                Task Update
+              </button>
+              <button
+                onClick={() => setNewMessage('URGENT: ')}
+                className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs hover:bg-red-200 transition-colors"
+              >
+                Urgent
+              </button>
+              <button
+                onClick={() => setNewMessage('Great work! ')}
+                className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200 transition-colors"
+              >
+                Praise
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

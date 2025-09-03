@@ -35,7 +35,7 @@ const CoordinatorLayout = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
+
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,11 +69,11 @@ const CoordinatorLayout = () => {
         if (response.success && response.notifications) {
           setNotifications(prev => {
             const existingKeys = new Set(
-              prev.map(n => 
+              prev.map(n =>
                 `${n.conversationId}-${n.senderId}-${n.message}-${new Date(n.createdAt).getTime()}`
               )
             );
-            
+
             const newNotifications = response.notifications
               .filter((n: Notification) => {
                 const key = `${n.conversationId}-${n.senderId}-${n.message}-${new Date(n.createdAt).getTime()}`;
@@ -85,7 +85,7 @@ const CoordinatorLayout = () => {
               }));
 
             if (newNotifications.length === 0) return prev;
-            
+
             return [...newNotifications, ...prev]
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           });
@@ -125,7 +125,7 @@ const CoordinatorLayout = () => {
   const handleMarkAsRead = async (notificationId: string, conversationId?: string) => {
     try {
       // Optimistic UI update
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n._id === notificationId ? { ...n, read: true } : n)
       );
       setUnreadCount(prev => {
@@ -134,13 +134,13 @@ const CoordinatorLayout = () => {
         return newCount;
       });
 
-      const response = conversationId 
+      const response = conversationId
         ? await NotificationService.markChatNotificationAsRead(notificationId, conversationId)
         : await NotificationService.markNotificationAsRead(notificationId);
-      
+
       if (!response.success) {
         // Rollback if API fails
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(n => n._id === notificationId ? { ...n, read: false } : n)
         );
         setUnreadCount(prev => prev + 1);
@@ -148,7 +148,7 @@ const CoordinatorLayout = () => {
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
       // Rollback on error
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n._id === notificationId ? { ...n, read: false } : n)
       );
       setUnreadCount(prev => prev + 1);
@@ -186,7 +186,7 @@ const CoordinatorLayout = () => {
   useEffect(() => {
     if (!userId || !token) return;
 
-    const newSocket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
+    const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000', {
       transports: ['websocket'],
       auth: { token },
       withCredentials: true,
@@ -225,8 +225,8 @@ const CoordinatorLayout = () => {
 
       setNotifications(prev => {
         const duplicateKey = `${normalizedNotification.conversationId}-${normalizedNotification.senderId}-${normalizedNotification.message}-${new Date(normalizedNotification.createdAt).getTime()}`;
-        
-        const isDuplicate = prev.some(n => 
+
+        const isDuplicate = prev.some(n =>
           `${n.conversationId}-${n.senderId}-${n.message}-${new Date(n.createdAt).getTime()}` === duplicateKey
         );
 
@@ -247,9 +247,9 @@ const CoordinatorLayout = () => {
       if (now - lastNotificationTime > 3000) {
         setLastNotificationTime(now);
         const toastId = `msg-${normalizedNotification._id}`;
-        
+
         toast.info(
-          <div 
+          <div
             className="p-3 border-l-4 border-blue-500 bg-white rounded shadow-sm cursor-pointer"
             onClick={() => {
               if (normalizedNotification.conversationId) {
@@ -316,8 +316,8 @@ const CoordinatorLayout = () => {
               {notification.message}
             </div>
             {notification.callLink && (
-              <a 
-                href={notification.callLink} 
+              <a
+                href={notification.callLink}
                 className="inline-block mt-2 text-xs text-blue-600 hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -389,7 +389,7 @@ const CoordinatorLayout = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-       <ToastContainer
+      <ToastContainer
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
@@ -401,14 +401,14 @@ const CoordinatorLayout = () => {
         pauseOnHover
         limit={3}
       />
-      
+
       <Sidebar
         activeTab={getActiveTab()}
         handleLogout={openLogoutConfirm}
         unreadCount={unreadCount}
         socket={socket}
       />
-      
+
       <div className="transition-all duration-300 ml-0 lg:ml-64">
         <div className="p-4 lg:p-8">
           <Header
@@ -427,8 +427,8 @@ const CoordinatorLayout = () => {
         </div>
       </div>
 
-      <MobileNav activeTab={getActiveTab()} setActiveTab={() => {}} />
-      
+      <MobileNav activeTab={getActiveTab()} setActiveTab={() => { }} />
+
       <NotificationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -436,7 +436,7 @@ const CoordinatorLayout = () => {
         onMarkAsRead={handleMarkAsRead}
         onMarkAllAsRead={handleMarkAllAsRead}
       />
-      
+
       <ConfirmationDialog
         isOpen={showLogoutConfirm}
         onClose={closeLogoutConfirm}

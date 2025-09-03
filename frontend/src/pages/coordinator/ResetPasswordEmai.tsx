@@ -15,10 +15,10 @@ export default function PasswordResetPage() {
   const [canResend, setCanResend] = useState(false);
   const [resendTime, setResendTime] = useState(30);
   const [otpVerified, setOtpVerified] = useState(false);
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   useEffect(() => {
-    let timer : NodeJS.Timeout;
-    
+    let timer: NodeJS.Timeout;
+
     if (!canResend && resendTime > 0) {
       timer = setTimeout(() => {
         setResendTime(resendTime - 1);
@@ -26,26 +26,26 @@ export default function PasswordResetPage() {
     } else if (resendTime === 0) {
       setCanResend(true);
     }
-    
+
     return () => clearTimeout(timer);
   }, [resendTime, canResend]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email.trim()) {
       setError('Please enter your email address');
       return;
     }
-    
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const response = await ResetPasswordEmailApi(email);
       if (response.status === 200) {
@@ -66,13 +66,13 @@ export default function PasswordResetPage() {
 
   const handleResendOtp = async () => {
     if (!canResend) return;
-    
+
     setIsSubmitting(true);
     setError('');
-    
+
     try {
       const response = await ResetPasswordEmailApi(email);
-      
+
       if (response.status === 200) {
         toast.success('New OTP sent to your email!');
         setCanResend(false);
@@ -91,12 +91,12 @@ export default function PasswordResetPage() {
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!otp.trim() || otp.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       const response = await VerifyOtpApi(email, otp);
@@ -117,26 +117,26 @@ export default function PasswordResetPage() {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
+
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
-      const response = await ResetPasswordApi(email,  password);
+      const response = await ResetPasswordApi(email, password);
       if (response.status === 200) {
         toast.success('Password reset successfully!');
         navigate("/employee-login")
@@ -154,7 +154,7 @@ export default function PasswordResetPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-          <div className="flex justify-center mb-6">
+        <div className="flex justify-center mb-6">
           <div className="flex items-center space-x-2">
             <div className="bg-blue-600 text-white p-2 rounded-lg">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,14 +166,14 @@ export default function PasswordResetPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
-          
+
           {/* Header with wave animation */}
           <div className="bg-indigo-600 p-6 relative overflow-hidden">
             <div className="absolute inset-0 opacity-20">
               {[...Array(5)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="absolute inset-0 transform translate-y-full animate-wave" 
+                <div
+                  key={i}
+                  className="absolute inset-0 transform translate-y-full animate-wave"
                   style={{
                     animationDelay: `${i * 0.2}s`,
                     background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
@@ -183,19 +183,19 @@ export default function PasswordResetPage() {
                 />
               ))}
             </div>
-            
+
             <div className="relative z-10">
               <h2 className="text-2xl font-bold text-white mb-1">
                 {step === 1 ? 'Reset Password' : step === 2 ? 'Verify OTP' : 'New Password'}
               </h2>
               <p className="text-indigo-100">
-                {step === 1 ? 'Enter your email to receive a reset link' : 
-                 step === 2 ? 'Enter the OTP sent to your email' : 
-                 'Create a new password for your account'}
+                {step === 1 ? 'Enter your email to receive a reset link' :
+                  step === 2 ? 'Enter the OTP sent to your email' :
+                    'Create a new password for your account'}
               </p>
             </div>
           </div>
-          
+
           <div className="p-6">
             {/* Step 1: Email Input */}
             {step === 1 && (
@@ -221,7 +221,7 @@ export default function PasswordResetPage() {
                   </div>
                   {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -271,7 +271,7 @@ export default function PasswordResetPage() {
                   </p>
                   {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
                 </div>
-                
+
                 {/* Resend OTP Section */}
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-gray-500">
@@ -281,25 +281,23 @@ export default function PasswordResetPage() {
                       "Didn't receive the code?"
                     )}
                   </p>
-                  
+
                   <button
                     type="button"
                     onClick={handleResendOtp}
                     disabled={!canResend || isSubmitting}
-                    className={`text-sm font-medium ${
-                      canResend ? 'text-indigo-600 hover:text-indigo-800' : 'text-gray-400'
-                    } transition-colors`}
+                    className={`text-sm font-medium ${canResend ? 'text-indigo-600 hover:text-indigo-800' : 'text-gray-400'
+                      } transition-colors`}
                   >
                     Resend OTP
                   </button>
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={isSubmitting || otpVerified}
-                  className={`w-full ${
-                    otpVerified ? 'bg-green-500 hover:bg-green-600' : 'bg-indigo-600 hover:bg-indigo-700'
-                  } text-white py-3 rounded-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200`}
+                  className={`w-full ${otpVerified ? 'bg-green-500 hover:bg-green-600' : 'bg-indigo-600 hover:bg-indigo-700'
+                    } text-white py-3 rounded-lg flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all duration-200`}
                 >
                   {otpVerified ? (
                     <div className="flex items-center">
@@ -376,9 +374,9 @@ export default function PasswordResetPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-                
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -401,7 +399,7 @@ export default function PasswordResetPage() {
               </form>
             )}
           </div>
-          
+
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
             <button
               type="button"
@@ -412,7 +410,7 @@ export default function PasswordResetPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Add global styles for animations */}
       <style >{`
         @keyframes wave {

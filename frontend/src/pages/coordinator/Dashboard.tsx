@@ -57,7 +57,7 @@ export default function Dashboard() {
     inactiveUsers: 0,
     newUsers: 0
   });
-   const [topComplainers, setTopComplainers] = useState<TopComplainer[]>([]);
+  const [topComplainers, setTopComplainers] = useState<TopComplainer[]>([]);
   const [complaintChartData, setComplaintChartData] = useState<ComplaintChartItem[]>([]);
   type PieChartDataItem = { name: string; value: number; color: string };
   const [pieChartData, setPieChartData] = useState<PieChartDataItem[]>([]);
@@ -68,45 +68,45 @@ export default function Dashboard() {
 
 
   const calculateTopComplainers = (complaints: any[]): TopComplainer[] => {
-  const complainersMap: Record<string, TopComplainer> = {};
+    const complainersMap: Record<string, TopComplainer> = {};
 
-  complaints.forEach(complaint => {
-    if (!complaint.user) return;
-    
-    const userId = complaint.user._id;
-    if (!complainersMap[userId]) {
-      complainersMap[userId] = {
-        name: complaint.user.name || 'Unknown',
-        email: complaint.user.email || 'No email',
-        complaintCount: 0,
-        lastComplaintDate: complaint.createdAt,
-        statusDistribution: {
-          completed: 0,
-          processing: 0,
-          pending: 0
-        }
-      };
-    }
+    complaints.forEach(complaint => {
+      if (!complaint.user) return;
 
-    complainersMap[userId].complaintCount++;
-    if (new Date(complaint.createdAt) > new Date(complainersMap[userId].lastComplaintDate)) {
-      complainersMap[userId].lastComplaintDate = complaint.createdAt;
-    }
+      const userId = complaint.user._id;
+      if (!complainersMap[userId]) {
+        complainersMap[userId] = {
+          name: complaint.user.name || 'Unknown',
+          email: complaint.user.email || 'No email',
+          complaintCount: 0,
+          lastComplaintDate: complaint.createdAt,
+          statusDistribution: {
+            completed: 0,
+            processing: 0,
+            pending: 0
+          }
+        };
+      }
 
-    // Update status distribution
-    if (complaint.status === 'completed') {
-      complainersMap[userId].statusDistribution.completed++;
-    } else if (complaint.status === 'processing') {
-      complainersMap[userId].statusDistribution.processing++;
-    } else if (complaint.status === 'pending') {
-      complainersMap[userId].statusDistribution.pending++;
-    }
-  });
+      complainersMap[userId].complaintCount++;
+      if (new Date(complaint.createdAt) > new Date(complainersMap[userId].lastComplaintDate)) {
+        complainersMap[userId].lastComplaintDate = complaint.createdAt;
+      }
 
-  return Object.values(complainersMap)
-    .sort((a, b) => b.complaintCount - a.complaintCount)
-    .slice(0, 5); // Get top 5 complainers
-};
+      // Update status distribution
+      if (complaint.status === 'completed') {
+        complainersMap[userId].statusDistribution.completed++;
+      } else if (complaint.status === 'processing') {
+        complainersMap[userId].statusDistribution.processing++;
+      } else if (complaint.status === 'pending') {
+        complainersMap[userId].statusDistribution.pending++;
+      }
+    });
+
+    return Object.values(complainersMap)
+      .sort((a, b) => b.complaintCount - a.complaintCount)
+      .slice(0, 5); // Get top 5 complainers
+  };
 
   useEffect(() => {
     setAnimateCards(true);
@@ -120,13 +120,13 @@ export default function Dashboard() {
       },
       { threshold: 0.1 }
     );
-    
+
     document.querySelectorAll('.animate-on-scroll').forEach((el) => {
       observer.observe(el);
     });
-    
+
     fetchComplaints();
-    
+
     return () => {
       observer.disconnect();
     };
@@ -139,29 +139,29 @@ export default function Dashboard() {
   }, [selectedDate, selectedMonth, allComplaints]);
 
   const fetchComplaints = async () => {
-  try {
-    const res = await getAllComplaint();
-    if (Array.isArray(res)) {
-      setAllComplaints(res);
-      setFilteredComplaints(res);
-      updateChartData(res);
-      setTopComplainers(calculateTopComplainers(res)); 
+    try {
+      const res = await getAllComplaint();
+      if (Array.isArray(res)) {
+        setAllComplaints(res);
+        setFilteredComplaints(res);
+        updateChartData(res);
+        setTopComplainers(calculateTopComplainers(res));
+      }
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
     }
-  } catch (error) {
-    console.error('Error fetching complaints:', error);
-  }
-};
+  };
 
   const applyFilters = () => {
     let filtered = [...allComplaints];
-    
+
     if (selectedMonth) {
       filtered = filtered.filter(complaint => {
         const complaintMonth = new Date(complaint.createdAt).getMonth();
         return complaintMonth === selectedMonth.getMonth();
       });
     }
-    
+
     if (selectedDate) {
       filtered = filtered.filter(complaint => {
         const complaintDate = new Date(complaint.createdAt);
@@ -172,28 +172,28 @@ export default function Dashboard() {
         );
       });
     }
-    
+
     setFilteredComplaints(filtered);
     updateChartData(filtered);
   };
 
   const fetchUserStats = async () => {
-  try {
-    const res = await ClientListApi(); 
-    setUserStats({
-      totalUsers: res.totalUsers,
-      activeUsers: res.activeUsers,
-      inactiveUsers: res.inactiveUsers,
-      newUsers: res.newUsers
-    });
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-  }
-};
+    try {
+      const res = await ClientListApi();
+      setUserStats({
+        totalUsers: res.totalUsers,
+        activeUsers: res.activeUsers,
+        inactiveUsers: res.inactiveUsers,
+        newUsers: res.newUsers
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
 
-useEffect(() => {
-  fetchUserStats();
-}, []);
+  useEffect(() => {
+    fetchUserStats();
+  }, []);
 
   const updateChartData = (complaints: any[]) => {
     setTotalComplaint(complaints.length);
@@ -206,7 +206,7 @@ useEffect(() => {
 
     const chartData = transformComplaintData(complaints);
     setComplaintChartData(chartData);
-    
+
     setPieChartData([
       { name: 'Solved', value: completed, color: '#9F7AEA' },
       { name: 'Pending', value: pending, color: '#ED64A6' },
@@ -216,11 +216,11 @@ useEffect(() => {
 
   const transformComplaintData = (complaints: any[]): ComplaintChartItem[] => {
     const monthlyData: { [key: string]: ComplaintChartItem } = {};
-    
+
     complaints.forEach(complaint => {
       const date = new Date(complaint.createdAt);
       const month = date.toLocaleString('default', { month: 'short' });
-      
+
       if (!monthlyData[month]) {
         monthlyData[month] = {
           month,
@@ -230,10 +230,10 @@ useEffect(() => {
           total: 0
         };
       }
-      
+
       monthlyData[month].total++;
-      
-      switch(complaint.status) {
+
+      switch (complaint.status) {
         case 'completed':
           monthlyData[month].completed++;
           break;
@@ -245,14 +245,14 @@ useEffect(() => {
           break;
       }
     });
-    
+
     // Convert to array and sort by month
-    const monthsOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthsOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const result = Object.values(monthlyData).sort((a, b) => {
       return monthsOrder.indexOf(a.month) - monthsOrder.indexOf(b.month);
     });
-    
+
     return result as ComplaintChartItem[];
   };
 
@@ -261,7 +261,7 @@ useEffect(() => {
     setSelectedDate(null); // Clear date filter when month is selected
   };
 
-  const handleDateChange = (date :  Date | null) => {
+  const handleDateChange = (date: Date | null) => {
     setSelectedDate(date);
     setSelectedMonth(null); // Clear month filter when date is selected
   };
@@ -272,33 +272,33 @@ useEffect(() => {
   };
 
   const stats = [
-    { 
-      title: 'TOTAL COMPLAINTS', 
-      value: totalComplaint, 
-      changeText: 'All time', 
-      icon: <CreditCard className="w-6 h-6 text-indigo-500" />, 
+    {
+      title: 'TOTAL COMPLAINTS',
+      value: totalComplaint,
+      changeText: 'All time',
+      icon: <CreditCard className="w-6 h-6 text-indigo-500" />,
       color: 'indigo'
     },
-    { 
-      title: 'COMPLETED COMPLAINTS', 
-      value: completedComplaint, 
-      changeText: `${Math.round((completedComplaint / totalComplaint) * 100) || 0}% resolved`, 
-      icon: <Users className="w-6 h-6 text-indigo-500" />, 
-      color: 'indigo' 
+    {
+      title: 'COMPLETED COMPLAINTS',
+      value: completedComplaint,
+      changeText: `${Math.round((completedComplaint / totalComplaint) * 100) || 0}% resolved`,
+      icon: <Users className="w-6 h-6 text-indigo-500" />,
+      color: 'indigo'
     },
-    { 
-      title: 'PENDING COMPLAINTS', 
-      value: pendingComplaint, 
-      changeText: `${Math.round((pendingComplaint / totalComplaint) * 100) || 0}% pending`, 
-      icon: <MessageSquare className="w-6 h-6 text-indigo-500" />, 
-      color: 'indigo' 
+    {
+      title: 'PENDING COMPLAINTS',
+      value: pendingComplaint,
+      changeText: `${Math.round((pendingComplaint / totalComplaint) * 100) || 0}% pending`,
+      icon: <MessageSquare className="w-6 h-6 text-indigo-500" />,
+      color: 'indigo'
     },
-    { 
-      title: 'PROCESSING COMPLAINTS', 
-      value: processingComplaint, 
-      changeText: `${Math.round((processingComplaint / totalComplaint) * 100) || 0}% in progress`, 
-      icon: <ShoppingCart className="w-6 h-6 text-indigo-500" />, 
-      color: 'indigo' 
+    {
+      title: 'PROCESSING COMPLAINTS',
+      value: processingComplaint,
+      changeText: `${Math.round((processingComplaint / totalComplaint) * 100) || 0}% in progress`,
+      icon: <ShoppingCart className="w-6 h-6 text-indigo-500" />,
+      color: 'indigo'
     }
   ];
 
@@ -330,7 +330,7 @@ useEffect(() => {
             />
           </div>
           {(selectedDate || selectedMonth) && (
-            <button 
+            <button
               onClick={clearFilters}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm"
             >
@@ -338,7 +338,7 @@ useEffect(() => {
             </button>
           )}
 
-           <CoordinatorInvoiceGenerator 
+          <CoordinatorInvoiceGenerator
             complaints={filteredComplaints}
             userStats={{
               totalUsers: userStats.totalUsers,
@@ -346,13 +346,13 @@ useEffect(() => {
               inactiveUsers: userStats.inactiveUsers,
               newUsers: userStats.newUsers
             }}
-            topComplainers={topComplainers} 
+            topComplainers={topComplainers}
             complaintTrends={complaintChartData}
             selectedPeriod={
-              selectedDate 
-                ? format(selectedDate, 'MMMM d, yyyy') 
-                : selectedMonth 
-                  ? format(selectedMonth, 'MMMM yyyy') 
+              selectedDate
+                ? format(selectedDate, 'MMMM d, yyyy')
+                : selectedMonth
+                  ? format(selectedMonth, 'MMMM yyyy')
                   : 'All Time'
             }
           />
@@ -361,11 +361,10 @@ useEffect(() => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
-          <div 
+          <div
             key={stat.title}
-            className={`transform transition-all duration-500 ${
-              animateCards ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-            }`}
+            className={`transform transition-all duration-500 ${animateCards ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
+              }`}
             style={{ transitionDelay: `${index * 100}ms` }}
           >
             <StatCard {...stat} delay={index} />
@@ -385,7 +384,7 @@ useEffect(() => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-20">
         <div className="animate-on-scroll opacity-0">
-          <UserStatsChart  />
+          <UserStatsChart />
         </div>
 
         <div className="animate-on-scroll opacity-0">

@@ -80,16 +80,16 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
 
           const userStats = userComplaintsMap.get(email)!;
           userStats.complaintCount += 1;
-          
+
           // Update last complaint date if newer
           const complaintDate = new Date(complaint.createdAt);
           const lastDate = new Date(userStats.lastComplaintDate);
           if (complaintDate > lastDate) {
             userStats.lastComplaintDate = complaint.createdAt;
           }
-          
+
           // Update status distribution
-          switch(complaint.workingStatus) {
+          switch (complaint.workingStatus) {
             case 'completed':
               userStats.statusDistribution.completed += 1;
               break;
@@ -111,7 +111,7 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
           const sortedDesc = [...userStatsArray].sort((a, b) => b.complaintCount - a.complaintCount);
           setTopComplainersLocal(sortedDesc.slice(0, 3));
           setBottomComplainers([]);
-          
+
           // Update parent component with top complainers
           if (setTopComplainers) {
             setTopComplainers(sortedDesc.slice(0, 3).map(user => ({
@@ -130,14 +130,14 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
           // Get top 3 and bottom 3, ensuring no overlap
           const top3 = sortedDesc.slice(0, 3);
           // Filter out top 3 from the ascending sort to prevent duplicates
-          const bottomCandidates = sortedAsc.filter(user => 
+          const bottomCandidates = sortedAsc.filter(user =>
             !top3.some(topUser => topUser.email === user.email)
           );
           const bottom3 = bottomCandidates.slice(0, 3);
 
           setTopComplainersLocal(top3);
           setBottomComplainers(bottom3);
-          
+
           // Update parent component with top complainers
           if (setTopComplainers) {
             setTopComplainers(top3.map(user => ({
@@ -200,11 +200,11 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
               <TrendingUp className="text-green-500 mr-2" size={18} />
               <h4 className="font-medium text-gray-700">Top Complainers (Most Complaints)</h4>
             </div>
-            
+
             {topComplainers.length > 0 ? (
               <div className="space-y-4">
                 {topComplainers.map((user, index) => (
-                  <UserComplaintItem 
+                  <UserComplaintItem
                     key={`top-${user.email}`}
                     user={user}
                     index={index}
@@ -218,7 +218,7 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
               <p className="text-gray-500 text-center py-4">No active complainers found</p>
             )}
           </div>
-          
+
           {/* Bottom Complainers Section */}
           {bottomComplainers.length > 0 && (
             <div>
@@ -228,7 +228,7 @@ export default function ComplaintLeadersCard({ setTopComplainers }: ComplaintLea
               </div>
               <div className="space-y-4">
                 {bottomComplainers.map((user, index) => (
-                  <UserComplaintItem 
+                  <UserComplaintItem
                     key={`bottom-${user.email}`}
                     user={user}
                     index={index}
@@ -259,11 +259,10 @@ function UserComplaintItem({ user, index, isTop, formatDate, getStatusPercentage
         <div>
           <div className="flex items-center">
             {isTop && (
-              <Award className={`mr-2 ${
-                index === 0 ? 'text-yellow-500 fill-yellow-100' : 
-                index === 1 ? 'text-gray-500 fill-gray-100' : 
-                'text-amber-700 fill-amber-100'
-              }`} size={18} />
+              <Award className={`mr-2 ${index === 0 ? 'text-yellow-500 fill-yellow-100' :
+                  index === 1 ? 'text-gray-500 fill-gray-100' :
+                    'text-amber-700 fill-amber-100'
+                }`} size={18} />
             )}
             <h4 className="font-semibold">{user.name}</h4>
           </div>
@@ -274,7 +273,7 @@ function UserComplaintItem({ user, index, isTop, formatDate, getStatusPercentage
           {user.complaintCount} complaint{user.complaintCount !== 1 ? 's' : ''}
         </span>
       </div>
-      
+
       {user.complaintCount > 0 && (
         <div className="mt-3">
           <div className="flex justify-between text-xs mb-1">
@@ -289,9 +288,9 @@ function UserComplaintItem({ user, index, isTop, formatDate, getStatusPercentage
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-1.5">
-            <div 
-              className="h-1.5 rounded-full" 
-              style={{ 
+            <div
+              className="h-1.5 rounded-full"
+              style={{
                 width: `${getStatusPercentage(user, 'completed')}%`,
                 background: 'linear-gradient(90deg, #10B981, #3B82F6, #F59E0B)'
               }}

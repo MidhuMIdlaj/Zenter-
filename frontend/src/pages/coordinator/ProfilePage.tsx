@@ -10,7 +10,7 @@ const CoordinatorProfile = () => {
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Editable fields state
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,7 +24,7 @@ const CoordinatorProfile = () => {
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!employeeData?.id) return;
-      
+
       try {
         setLoading(true);
         const data = await EmployeeAPI.getEmployeeProfile(employeeData.id);
@@ -56,9 +56,9 @@ const CoordinatorProfile = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeData?.id) return;
-    
+
     try {
-      const updatedEmployee = await EmployeeAPI.updateEmployeeProfile(
+      const response = await EmployeeAPI.updateEmployeeProfile(
         employeeData.id,
         {
           employeeName: formData.employeeName,
@@ -67,7 +67,9 @@ const CoordinatorProfile = () => {
           age: Number(formData.age)
         }
       );
-      
+
+      const updatedEmployee = response.data;
+
       setProfileData(updatedEmployee);
       setFormData({
         employeeName: updatedEmployee.employeeName,
@@ -75,7 +77,7 @@ const CoordinatorProfile = () => {
         address: updatedEmployee.address,
         age: updatedEmployee.age
       });
-      
+
       toast.success('Profile updated successfully');
       setEditMode(false);
     } catch (error) {
@@ -108,7 +110,7 @@ const CoordinatorProfile = () => {
               </div>
             </div>
             {!editMode && (
-              <button 
+              <button
                 onClick={() => setEditMode(true)}
                 className="px-4 py-2 bg-white text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors flex items-center"
               >
@@ -135,7 +137,7 @@ const CoordinatorProfile = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700">Contact Number</label>
                   <input
@@ -147,7 +149,7 @@ const CoordinatorProfile = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700">Address</label>
                   <input
@@ -159,7 +161,7 @@ const CoordinatorProfile = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-700">Age</label>
                   <input
@@ -172,7 +174,7 @@ const CoordinatorProfile = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -194,7 +196,7 @@ const CoordinatorProfile = () => {
               {/* Personal Info */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">Personal Information</h2>
-                
+
                 <div className="flex items-start space-x-3">
                   <Mail size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -202,7 +204,7 @@ const CoordinatorProfile = () => {
                     <p className="text-gray-800">{profileData.emailId}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <Phone size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -210,7 +212,7 @@ const CoordinatorProfile = () => {
                     <p className="text-gray-800">{profileData.contactNumber}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <MapPin size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -218,7 +220,7 @@ const CoordinatorProfile = () => {
                     <p className="text-gray-800">{profileData.address}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <User size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -227,11 +229,11 @@ const CoordinatorProfile = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Professional Info */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-gray-800 border-b pb-2">Professional Information</h2>
-                
+
                 <div className="flex items-start space-x-3">
                   <Calendar size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -241,7 +243,7 @@ const CoordinatorProfile = () => {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <DollarSign size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -249,7 +251,7 @@ const CoordinatorProfile = () => {
                     <p className="text-gray-800">${profileData.currentSalary}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <Briefcase size={20} className="text-indigo-600 mt-1" />
                   <div>
@@ -257,7 +259,7 @@ const CoordinatorProfile = () => {
                     <p className="text-gray-800 capitalize">{profileData.position}</p>
                   </div>
                 </div>
-                
+
                 {profileData.experience && (
                   <div className="flex items-start space-x-3">
                     <Clock size={20} className="text-indigo-600 mt-1" />

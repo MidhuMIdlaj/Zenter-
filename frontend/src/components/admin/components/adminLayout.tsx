@@ -83,7 +83,6 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
       <div
         className={`fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-200 shadow-lg z-50
         transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
@@ -92,7 +91,6 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
         <Sidebar />
       </div>
 
-      {/* Backdrop (mobile only) */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden"
@@ -100,7 +98,6 @@ const AdminLayout = ({ children }: AdminLayoutProps): React.JSX.Element => {
         />
       )}
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className="flex-1 lg:ml-72 pt-16 p-6 overflow-auto">

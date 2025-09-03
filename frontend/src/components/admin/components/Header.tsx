@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Search, Menu } from 'lucide-react';
+import { Bell, Search, Menu, X } from 'lucide-react';
 import NotificationModal from './NotificationModal';
 import { useSelector } from 'react-redux';
 import { selectAdminAuthData } from '../../../store/selectors';
@@ -20,6 +20,7 @@ interface Notification {
 
 const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { adminData } = useSelector(selectAdminAuthData);
@@ -132,42 +133,60 @@ const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) 
   }, [isModalOpen, userId]);
 
   return (
-    <div className="bg-blue-500 p-4 fixed top-0 left-0 right-0 z-40 shadow-md min-h-16">
-      <div className="flex justify-between items-center max-w-7xl mx-auto">
+    <div className="bg-blue-500 p-3 sm:p-4 fixed top-0 left-0 right-0 z-40 shadow-md min-h-14 sm:min-h-16">
+      <div className="flex justify-between items-center max-w-full mx-auto">
         
-        {/* Left Side - Project Title + Hamburger */}
-        <div className="flex items-center space-x-3">
-          {/* Hamburger for small screens */}
+        {/* Left Side - Hamburger + Title */}
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          {/* Hamburger for mobile/tablet */}
           <button
-            className="lg:hidden p-2 rounded-md text-white hover:bg-blue-600"
+            className="lg:hidden p-2 rounded-md text-white hover:bg-blue-600 transition-colors touch-manipulation flex-shrink-0"
             onClick={onToggleSidebar}
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </button>
 
-          <div className="flex flex-col">
+          {/* Admin Title - Hidden on very small screens */}
+          <div className="hidden xs:flex flex-col min-w-0">
+            <h1 className="text-sm sm:text-lg font-semibold text-white truncate">
+              Admin Dashboard
+            </h1>
+            <p className="text-xs text-blue-200 hidden sm:block">
+              Welcome back, Administrator
+            </p>
           </div>
         </div>
 
         {/* Right Side - Search + Notifications */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+          {/* Mobile Search Toggle */}
+          <button
+            className="sm:hidden p-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors touch-manipulation"
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+          >
+            {isSearchOpen ? <X size={18} /> : <Search size={18} />}
+          </button>
+
+          {/* Desktop Search */}
           <div className="relative hidden sm:block">
             <input
               type="text"
               placeholder="Search..."
-              className="py-2 pl-10 pr-4 bg-blue-600 text-white placeholder-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-64"
+              className="py-2 pl-10 pr-4 bg-blue-600 text-white placeholder-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-48 md:w-64 transition-all"
             />
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-300" />
           </div>
+
+          {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="p-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+              className="p-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors touch-manipulation"
             >
-              <Bell size={20} />
+              <Bell size={18} />
             </button>
             {unreadCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs font-medium">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -175,16 +194,33 @@ const Header: React.FC<{ onToggleSidebar: () => void }> = ({ onToggleSidebar }) 
         </div>
       </div>
 
-      {/* Notification Modal always centered */}
+      {/* Mobile Search Bar */}
+      {isSearchOpen && (
+        <div className="sm:hidden mt-3 px-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full py-2 pl-10 pr-4 bg-blue-600 text-white placeholder-blue-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              autoFocus
+            />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-300" />
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal with responsive positioning */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-start justify-end mt-16 mr-4 z-50">
-          <NotificationModal
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
-            notifications={notifications}
-            onMarkAsRead={handleMarkAsRead}
-            onMarkAllAsRead={handleMarkAllAsRead}
-          />
+        <div className="fixed inset-0 flex items-start justify-center sm:justify-end mt-16 sm:mt-16 mx-2 sm:mr-4 z-50">
+          <div className="w-full max-w-sm sm:max-w-md">
+            <NotificationModal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              notifications={notifications}
+              onMarkAsRead={handleMarkAsRead}
+              onMarkAllAsRead={handleMarkAllAsRead}
+            />
+          </div>
         </div>
       )}
     </div>

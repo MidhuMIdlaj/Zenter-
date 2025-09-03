@@ -21,7 +21,6 @@ const AssignedComplaintsList: React.FC<AssignedComplaintsListProps> = ({
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [showAcceptRejectModal, setShowAcceptRejectModal] = useState(false);
 
-  // Filter to only show pending complaints for this mechanic
   const pendingComplaints = complaints.filter(complaint => {
     return complaint.workingStatus === 'pending' && complaint.assignedMechanicId === mechanicId;
   });
@@ -74,7 +73,6 @@ const AssignedComplaintsList: React.FC<AssignedComplaintsListProps> = ({
     );
   }
 
-  // Check filtered complaints, not all complaints
   if (!pendingComplaints.length) {
     return (
       <div className="text-center py-8">

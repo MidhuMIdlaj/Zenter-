@@ -18,7 +18,7 @@ const EmployeeLogin: React.FC = () => {
     password: '',
     error: '',
     isLoading: false
-    
+
   });
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -58,21 +58,21 @@ const EmployeeLogin: React.FC = () => {
         error: 'Please enter both email and password'
       }));
     }
-    
+
     setFormState(prevState => ({
       ...prevState,
       error: '',
       isLoading: true
     }));
-    
+
     setTimeout(() => {
       (async () => {
         try {
           const response = await EmployeeLoginApi(email, password);
           if (response.status === 200 && response.data) {
-              const { token, id, position, employeeName } = response.data    
-            dispatch(setEmployeeAuth({token, id, position, employeeName }));
-            
+            const { token, id, position, employeeName } = response.data
+            dispatch(setEmployeeAuth({ token, id, position, employeeName }));
+
             if (position === "mechanic") {
               navigate('/mechanic/dashboard');
             } else if (position === "coordinator") {
@@ -97,13 +97,13 @@ const EmployeeLogin: React.FC = () => {
         }
       })();
     }, 1500);
-    
-    }
-   const getInputClasses = (fieldId: string): string => {
+
+  }
+  const getInputClasses = (fieldId: string): string => {
     const baseClasses = "w-full pl-10 pr-3 py-3 rounded-lg border transition-all duration-300";
     const inactiveClasses = "bg-white/10 border-white/20 text-white placeholder-blue-200/60";
     const activeClasses = "bg-white/20 border-blue-400 text-white placeholder-white/80 shadow-lg shadow-blue-500/20";
-    
+
     return `${baseClasses} ${activeField === fieldId ? activeClasses : inactiveClasses} focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent`;
   };
 
@@ -117,17 +117,17 @@ const EmployeeLogin: React.FC = () => {
           <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-cyan-500 opacity-20 blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
           <div className="absolute top-3/4 left-1/2 w-48 h-48 rounded-full bg-yellow-400 opacity-10 blur-3xl animate-pulse" style={{ animationDelay: '0.7s' }}></div>
         </div>
-        
+
         {/* Background grid pattern */}
-        <div className="absolute inset-0 opacity-10" style={{ 
+        <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.15) 1px, transparent 0)',
-          backgroundSize: '32px 32px' 
+          backgroundSize: '32px 32px'
         }}></div>
-        
+
         {/* Background image with placeholder */}
-        <img 
-          src="/api/placeholder/1600/900" 
-          alt="Solar panels on rooftop" 
+        <img
+          src="/api/placeholder/1600/900"
+          alt="Solar panels on rooftop"
           className="w-full h-full object-cover opacity-40"
         />
         {/* Gradient overlay */}
@@ -182,7 +182,7 @@ const EmployeeLogin: React.FC = () => {
               {/* Email field */}
               <div className={`transition-all duration-300 ${activeField === 'email' ? 'scale-105' : 'scale-100'}`}>
                 <label htmlFor="email" className="block text-sm font-medium text-blue-100 mb-2">
-                 Enter your registered Email 
+                  Enter your registered Email
                 </label>
                 <div className="relative">
                   <div className={`absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors duration-300 ${activeField === 'email' ? 'text-blue-400' : 'text-blue-200'}`}>
@@ -242,12 +242,12 @@ const EmployeeLogin: React.FC = () => {
                   </label>
                 </div>
                 <button
-                    onClick={handleReset}
-                    className="text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors relative group"
-                    >
-                    Reset your Password
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-300 group-hover:w-full transition-all duration-300"></span>
-                    </button>
+                  onClick={handleReset}
+                  className="text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors relative group"
+                >
+                  Reset your Password
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-300 group-hover:w-full transition-all duration-300"></span>
+                </button>
               </div>
 
               {/* Login button */}
@@ -260,15 +260,15 @@ const EmployeeLogin: React.FC = () => {
                   {isLoading ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Signing in...
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Signing in...
                     </>
                   ) : (
                     <>
-                    Sign In
-                    <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                      Sign In
+                      <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </span>
@@ -279,7 +279,7 @@ const EmployeeLogin: React.FC = () => {
 
           {/* Card footer */}
           <div className="px-8 py-5 bg-gradient-to-r from-black/20 to-black/30 text-center">
-            <button 
+            <button
               type="button"
               className="text-sm text-blue-300 hover:text-blue-200 transition-all duration-300 relative inline-flex items-center group"
             >

@@ -34,7 +34,7 @@ const CoordinatorComplaintTable: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+
   const [formData, setFormData] = useState<ComplaintFormData>({
     customerEmail: "",
     contactNumber: "",
@@ -47,7 +47,7 @@ const CoordinatorComplaintTable: React.FC = () => {
     notes: "",
     workingStatus: "",
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -57,9 +57,9 @@ const CoordinatorComplaintTable: React.FC = () => {
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintFormData | null>(null);
-  const [customerEmails, setCustomerEmails] = useState<{email: string, name?: string}[]>([]);
+  const [customerEmails, setCustomerEmails] = useState<{ email: string, name?: string }[]>([]);
   const [coordinator, setCoordinator] = useState<coordinator[]>([]);
-  
+
   const selectEmployeeId = (state: RootState) => state.employeeAuth?.employeeData?.id;
   const employeeId = useSelector(selectEmployeeId);
 
@@ -110,14 +110,14 @@ const CoordinatorComplaintTable: React.FC = () => {
     const inProgress = complaints.filter(c => c.status === 'in-progress').length;
     const resolved = complaints.filter(c => c.status === 'resolved').length;
     const cancelled = complaints.filter(c => c.status === 'cancelled').length;
-    
+
     setStats({ total, pending, inProgress, resolved, cancelled });
   };
 
   const loadMechanics = async () => {
     try {
       const mechanics = await fetchAvailableMechanics();
-      setMechanics(mechanics || []); 
+      setMechanics(mechanics || []);
     } catch (error) {
       console.error("Failed to fetch mechanics:", error);
       toast.error("Failed to load mechanics");
@@ -125,28 +125,28 @@ const CoordinatorComplaintTable: React.FC = () => {
     }
   };
 
-    const loadCoordinator = async()=>{
-      try {
-        const coordinator = await fetchCoordinatorEmails();
-        setCoordinator(coordinator || [])
-      } catch (error) {
-        console.error("Failed to fetch coordinators:", error);
-        toast.error("Failed to load coordinators");
-        setCoordinator([]); 
-      }
+  const loadCoordinator = async () => {
+    try {
+      const coordinator = await fetchCoordinatorEmails();
+      setCoordinator(coordinator || [])
+    } catch (error) {
+      console.error("Failed to fetch coordinators:", error);
+      toast.error("Failed to load coordinators");
+      setCoordinator([]);
     }
-  
+  }
+
 
   const loadComplaints = async () => {
     setIsLoading(true);
     setIsRefreshing(true);
     try {
       const complaints = await getComplaintsByCoordinator();
-      
-      const activeComplaints = Array.isArray(complaints) 
-        ? complaints.filter(comp => !comp.isDeleted) 
+
+      const activeComplaints = Array.isArray(complaints)
+        ? complaints.filter(comp => !comp.isDeleted)
         : [];
-      
+
       setComplaints(activeComplaints);
       setFilteredComplaints(activeComplaints);
       setTotalItems(activeComplaints.length);
@@ -159,7 +159,7 @@ const CoordinatorComplaintTable: React.FC = () => {
       setIsRefreshing(false);
     }
   };
-  
+
   const loadCustomerEmails = async () => {
     try {
       const customers = await fetchCustomerEmails();
@@ -207,8 +207,8 @@ const CoordinatorComplaintTable: React.FC = () => {
   // Quick status update
   const handleQuickStatusUpdate = async (complaintId: string, newStatus: string) => {
     try {
-      setComplaints(prev => 
-        prev.map(comp => 
+      setComplaints(prev =>
+        prev.map(comp =>
           comp.id === complaintId ? { ...comp, status: newStatus } : comp
         )
       );
@@ -252,7 +252,7 @@ const CoordinatorComplaintTable: React.FC = () => {
         await createComplaint(complaintData);
         toast.success("Complaint registered successfully");
       }
-      
+
       setSubmitSuccess(true);
       await loadComplaints();
 
@@ -293,7 +293,7 @@ const CoordinatorComplaintTable: React.FC = () => {
 
     try {
       const response = await findEmailForInitialCreation(formData.customerEmail);
-      
+
       if (response.success && response.exists && response.customerData) {
         setFormData(prev => ({
           ...prev,
@@ -302,7 +302,7 @@ const CoordinatorComplaintTable: React.FC = () => {
           products: response.customerData.products || [],
           selectedProductId: ""
         }));
-        setFormStep(2); 
+        setFormStep(2);
       } else {
         setSubmitError("Customer not found. Please enter a valid registered email.");
       }
@@ -412,65 +412,65 @@ const CoordinatorComplaintTable: React.FC = () => {
     }
   };
 
-   type StatusValue = 
-    | 'pending' 
-    | 'processing' 
-    | 'accept' 
-    | 'in-progress' 
-    | 'resolved' 
+  type StatusValue =
+    | 'pending'
+    | 'processing'
+    | 'accept'
+    | 'in-progress'
+    | 'resolved'
     | 'cancelled'
     | 'completed'
     | 'rejected'
     | string;
 
-  const StatusBadge = ({ workingStatus, statusObj }: { 
-  workingStatus?: StatusValue;
-  statusObj?: { status: string; updatedAt: string; updatedBy: string };
-}) => {
-  const actualStatus = statusObj?.status || workingStatus || "";
-  
-  const statusText: Record<string, string> = {
-    pending: "Pending",
-    processing: "Processing",
-    accept: "Accepted",
-    "in-progress": "In Progress",
-    resolved: "Resolved",
-    cancelled: "Cancelled",
-    completed: "Completed",
-    rejected: "Rejected",
+  const StatusBadge = ({ workingStatus, statusObj }: {
+    workingStatus?: StatusValue;
+    statusObj?: { status: string; updatedAt: string; updatedBy: string };
+  }) => {
+    const actualStatus = statusObj?.status || workingStatus || "";
+
+    const statusText: Record<string, string> = {
+      pending: "Pending",
+      processing: "Processing",
+      accept: "Accepted",
+      "in-progress": "In Progress",
+      resolved: "Resolved",
+      cancelled: "Cancelled",
+      completed: "Completed",
+      rejected: "Rejected",
+    };
+
+    const statusColors: Record<string, string> = {
+      pending: "#FBBF24",
+      processing: "#3B82F6",
+      accept: "#10B981",
+      "in-progress": "#3B82F6",
+      resolved: "#10B981",
+      cancelled: "#EF4444",
+      completed: "#10B981",
+      rejected: "#EF4444",
+      "": "#6B7280",
+    };
+
+    const color = statusColors[actualStatus] || "#6B7280";
+    const bgColor = `${color}20`;
+
+    return (
+      <div
+        className="px-3 py-1 rounded-full inline-flex items-center"
+        style={{ backgroundColor: bgColor }}
+      >
+        <span
+          className="w-2 h-2 rounded-full mr-1.5"
+          style={{ backgroundColor: color }}
+        ></span>
+        <span className="text-xs font-medium" style={{ color }}>
+          {statusText[actualStatus] || actualStatus}
+        </span>
+      </div>
+    );
   };
 
-  const statusColors: Record<string, string> = {
-    pending: "#FBBF24",
-    processing: "#3B82F6",
-    accept: "#10B981",
-    "in-progress": "#3B82F6",
-    resolved: "#10B981",
-    cancelled: "#EF4444",
-    completed: "#10B981",
-    rejected: "#EF4444",
-    "": "#6B7280",
-  };
-
-  const color = statusColors[actualStatus] || "#6B7280";
-  const bgColor = `${color}20`;
-  
-  return (
-    <div
-      className="px-3 py-1 rounded-full inline-flex items-center"
-      style={{ backgroundColor: bgColor }}
-    >
-      <span
-        className="w-2 h-2 rounded-full mr-1.5"
-        style={{ backgroundColor: color }}
-      ></span>
-      <span className="text-xs font-medium" style={{ color }}>
-        {statusText[actualStatus] || actualStatus}
-      </span>
-    </div>
-  );
-};
-  
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -501,11 +501,10 @@ const CoordinatorComplaintTable: React.FC = () => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={loadComplaints}
-              className={`flex items-center gap-2 p-2 rounded-full ${
-                isRefreshing
+              className={`flex items-center gap-2 p-2 rounded-full ${isRefreshing
                   ? "text-blue-600"
                   : "text-gray-600 hover:text-blue-600 hover:bg-gray-100"
-              }`}
+                }`}
             >
               <motion.div
                 animate={isRefreshing ? { rotate: 360 } : {}}
@@ -611,7 +610,7 @@ const CoordinatorComplaintTable: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
+
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -668,7 +667,7 @@ const CoordinatorComplaintTable: React.FC = () => {
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="flex flex-col items-center">
-              <motion.div 
+              <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                 className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600"
@@ -701,7 +700,7 @@ const CoordinatorComplaintTable: React.FC = () => {
                     transition={{ delay: index * 0.05, duration: 0.3 }}
                     className="hover:bg-blue-50 transition-colors group"
                   >
-                     <td className="p-4 hidden md:table-cell">
+                    <td className="p-4 hidden md:table-cell">
                       <p className="text-gray-700">{complaint.complaintNumber}</p>
                     </td>
                     <td className="p-4">
@@ -720,7 +719,7 @@ const CoordinatorComplaintTable: React.FC = () => {
                     </td>
                     <td className="p-4">
                       <p className="text-gray-700 line-clamp-2 max-w-xs">
-                        {complaint.description.length > 60 
+                        {complaint.description.length > 60
                           ? `${complaint.description.substring(0, 60)}...`
                           : complaint.description
                         }
@@ -738,13 +737,13 @@ const CoordinatorComplaintTable: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                       <StatusBadge
-                  workingStatus={
-                    (complaint.workingStatus ||
-                      complaint.status ||
-                      "") as StatusValue
-                     }
-                   />
+                      <StatusBadge
+                        workingStatus={
+                          (complaint.workingStatus ||
+                            complaint.status ||
+                            "") as StatusValue
+                        }
+                      />
                     </td>
                     <td className="p-4">
                       <p className="text-sm text-gray-600">
@@ -753,7 +752,7 @@ const CoordinatorComplaintTable: React.FC = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex justify-end gap-2">
-                        <motion.button 
+                        <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => openViewModal(complaint)}
@@ -762,7 +761,7 @@ const CoordinatorComplaintTable: React.FC = () => {
                         >
                           <Eye size={16} />
                         </motion.button>
-                        <motion.button 
+                        <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => openEditModal(complaint)}
@@ -771,7 +770,7 @@ const CoordinatorComplaintTable: React.FC = () => {
                         >
                           <Edit2 size={16} />
                         </motion.button>
-                        <motion.button 
+                        <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
                           onClick={() => openDeleteModal(complaint.id)}
@@ -826,8 +825,8 @@ const CoordinatorComplaintTable: React.FC = () => {
                   {isEditMode
                     ? "Edit Complaint"
                     : formStep === 1
-                    ? "Register New Complaint"
-                    : "Verify Complaint Details"}
+                      ? "Register New Complaint"
+                      : "Verify Complaint Details"}
                 </h3>
                 <button
                   onClick={resetForm}
@@ -900,29 +899,29 @@ const CoordinatorComplaintTable: React.FC = () => {
 
 
       {/* View Complaint Modal */}
-          {showViewModal && selectedComplaint && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-              >
-                <ComplaintDetails
-                  complaint={selectedComplaint}
-                  mechanics={mechanics}
-                  coordinator={coordinator}
-                  onClose={() => {
-                    setShowViewModal(false);
-                    setSelectedComplaint(null);
-                  }}
-                  onEdit={() => {
-                    setShowViewModal(false);
-                    openEditModal(selectedComplaint);
-                  }}
-                />
-              </motion.div>
-            </div>
-          )}
+      {showViewModal && selectedComplaint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <ComplaintDetails
+              complaint={selectedComplaint}
+              mechanics={mechanics}
+              coordinator={coordinator}
+              onClose={() => {
+                setShowViewModal(false);
+                setSelectedComplaint(null);
+              }}
+              onEdit={() => {
+                setShowViewModal(false);
+                openEditModal(selectedComplaint);
+              }}
+            />
+          </motion.div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedComplaint && (
@@ -932,7 +931,7 @@ const CoordinatorComplaintTable: React.FC = () => {
           onCancel={() => {
             setShowDeleteModal(false);
             setSelectedComplaint(null);
-          } } submitError={null}        />
+          }} submitError={null} />
       )}
     </div>
   );

@@ -26,11 +26,11 @@ import "react-toastify/dist/ReactToastify.css";
 import Swal from 'sweetalert2';
 import UserForm from "../../components/admin/pages/customers/CustomerForm";
 import DeleteConfirmation from "../../components/admin/pages/customers/DeleteConfirmation";
-import { 
-  ClientListApi, 
-  UpdateClientStatusApi, 
-  getClientById, 
-  ClientApi, 
+import {
+  ClientListApi,
+  UpdateClientStatusApi,
+  getClientById,
+  ClientApi,
   UpdateClientApi,
   softDeleteClientApi,
   searchClientsApi
@@ -78,7 +78,7 @@ interface FormData {
   attendedDate: string;
   contactNumber: string;
   address: string;
-  products: Product[]; 
+  products: Product[];
   status: string;
   lastLogin?: string;
   role?: string;
@@ -114,7 +114,7 @@ const UserTable: React.FC = () => {
     key: keyof User;
     direction: "asc" | "desc";
   } | null>(null);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
@@ -130,7 +130,7 @@ const UserTable: React.FC = () => {
     try {
       setIsRefreshing(true);
       setLoading(true);
-      
+
       const response = await ClientListApi(page, itemsPerPage);
       if (response && response.success) {
         const mappedClients = response.clients
@@ -155,7 +155,7 @@ const UserTable: React.FC = () => {
             guaranteeDate: client.guaranteeDate || "",
             lastLogin: client.lastLogin || "Never"
           }));
-          
+
         setUsers(mappedClients);
         setTotalItems(response.total);
         setTotalPages(response.totalPages);
@@ -178,9 +178,9 @@ const UserTable: React.FC = () => {
       setIsRefreshing(true);
       setLoading(true);
       const response = await searchClientsApi(
-        searchTerm, 
-        statusFilter, 
-        currentPage, 
+        searchTerm,
+        statusFilter,
+        currentPage,
         itemsPerPage
       );
 
@@ -206,7 +206,7 @@ const UserTable: React.FC = () => {
           guaranteeDate: client.guaranteeDate || "",
           lastLogin: client.lastLogin || "Never"
         }));
-        
+
         setUsers(mappedClients);
         setTotalItems(response.total);
         setTotalPages(response.totalPages);
@@ -241,7 +241,7 @@ const UserTable: React.FC = () => {
   }, [currentPage]);
 
   const sortedUsers = [...users].sort((a, b) => {
-    if (!sortConfig) return 0; 
+    if (!sortConfig) return 0;
     const { key, direction } = sortConfig;
     if ((a[key] ?? "") < (b[key] ?? "")) return direction === "asc" ? -1 : 1;
     if ((a[key] ?? "") > (b[key] ?? "")) return direction === "asc" ? 1 : -1;
@@ -261,7 +261,7 @@ const UserTable: React.FC = () => {
   const toggleStatus = async (id: string) => {
     const userToUpdate = users.find(user => user.id === id);
     if (!userToUpdate) return;
-       
+
     const newStatus = userToUpdate.status === "active" ? "inactive" : "active";
     const statusConfig = {
       active: { color: "#10B981", label: "Active" },
@@ -309,7 +309,7 @@ const UserTable: React.FC = () => {
         setUsers(users.map(user =>
           user.id === id ? { ...user, status: newStatus as "active" | "inactive" } : user
         ));
-        
+
         Swal.fire({
           title: "Status Updated",
           text: `Successfully changed to ${statusConfig[newStatus].label}`,
@@ -340,7 +340,7 @@ const UserTable: React.FC = () => {
     try {
       setLoading(true);
       const clientDetails = await getClientById(user.id);
-      
+
       if (clientDetails) {
         setFormData({
           id: user.id,
@@ -372,7 +372,7 @@ const UserTable: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
   const handleSubmit = async (data: FormData) => {
     try {
       const clientData = {
@@ -384,10 +384,10 @@ const UserTable: React.FC = () => {
         status: data.status,
         role: data.role,
         attendedDate: data.attendedDate,
-        products: data.products, 
+        products: data.products,
         lastLogin: new Date().toISOString()
       };
-  
+
       if (data.id) {
         await UpdateClientApi(data.id, clientData);
         toast.success('User updated successfully');
@@ -395,7 +395,7 @@ const UserTable: React.FC = () => {
         await ClientApi(clientData);
         toast.success('User added successfully');
       }
-      
+
       if (searchTerm || statusFilter !== 'all' || roleFilter !== 'all') {
         await searchUser();
       } else {
@@ -410,20 +410,20 @@ const UserTable: React.FC = () => {
 
   const handleSoftDelete = async () => {
     if (!selectedUser) return;
-    
+
     try {
       await softDeleteClientApi(selectedUser.id);
-      
-      setUsers(users.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, status: "inactive" } 
+
+      setUsers(users.map(user =>
+        user.id === selectedUser.id
+          ? { ...user, status: "inactive" }
           : user
       ));
-      
+
       toast.success("User has been deactivated");
       setShowDeleteConfirm(false);
       setSelectedUser(null);
-      
+
       if (searchTerm || statusFilter !== 'all' || roleFilter !== 'all') {
         await searchUser();
       } else {
@@ -452,21 +452,21 @@ const UserTable: React.FC = () => {
   // Animation variants
   const tableRowVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({ 
-      opacity: 1, 
+    visible: (i: number) => ({
+      opacity: 1,
       y: 0,
       transition: { delay: i * 0.05, duration: 0.3 }
     })
   };
 
-//   const getStatusColor = (status: string) => {
-//     switch (status.toLowerCase()) {
-//       case 'active': return 'bg-green-100 text-green-800';
-//       case 'inactive': return 'bg-yellow-100 text-yellow-800';
-//       case 'suspended': return 'bg-red-100 text-red-800';
-//       default: return 'bg-gray-100 text-gray-800';
-//     }
-//   };
+  //   const getStatusColor = (status: string) => {
+  //     switch (status.toLowerCase()) {
+  //       case 'active': return 'bg-green-100 text-green-800';
+  //       case 'inactive': return 'bg-yellow-100 text-yellow-800';
+  //       case 'suspended': return 'bg-red-100 text-red-800';
+  //       default: return 'bg-gray-100 text-gray-800';
+  //     }
+  //   };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -520,7 +520,7 @@ const UserTable: React.FC = () => {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="flex flex-col items-center">
-          <motion.div 
+          <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600"
@@ -534,7 +534,7 @@ const UserTable: React.FC = () => {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden font-poppins">
       {/* Header Section */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200"
@@ -547,7 +547,7 @@ const UserTable: React.FC = () => {
             </h2>
             <p className="text-gray-600 mt-1">View and manage your client database</p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <motion.button
               whileHover={{ scale: 1.03 }}
@@ -568,7 +568,7 @@ const UserTable: React.FC = () => {
                 <RefreshCw size={18} />
               </motion.div>
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.97 }}
@@ -606,7 +606,7 @@ const UserTable: React.FC = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
         {stats.map((stat, index) => (
-          <motion.div 
+          <motion.div
             key={stat.title}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -655,7 +655,7 @@ const UserTable: React.FC = () => {
                 <span>Status: {statusFilter === "all" ? "All" : statusFilter === "active" ? "Active" : "Inactive"}</span>
                 <ChevronDown size={16} />
               </motion.button>
-              
+
               {showStatusFilter && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -711,7 +711,7 @@ const UserTable: React.FC = () => {
                 <span>Role: {roleFilter === "all" ? "All" : roleFilter}</span>
                 <ChevronDown size={16} />
               </motion.button>
-              
+
               {showRoleFilter && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -792,19 +792,19 @@ const UserTable: React.FC = () => {
               </th>
               <th className="p-4 font-medium hidden md:table-cell">
                 <div className="flex items-center gap-1">
-                  <Mail size={16} className="text-gray-400" /> 
+                  <Mail size={16} className="text-gray-400" />
                   <span>Email</span>
                 </div>
               </th>
               <th className="p-4 font-medium hidden sm:table-cell">
                 <div className="flex items-center gap-1">
-                  <Phone size={16} className="text-gray-400" /> 
+                  <Phone size={16} className="text-gray-400" />
                   <span>Phone</span>
                 </div>
               </th>
               <th className="p-4 font-medium hidden lg:table-cell">
                 <div className="flex items-center gap-1">
-                  <MapPin size={16} className="text-gray-400" /> 
+                  <MapPin size={16} className="text-gray-400" />
                   <span>Location</span>
                 </div>
               </th>
@@ -840,7 +840,7 @@ const UserTable: React.FC = () => {
                     </div>
                   </td>
                   <td className="p-4 hidden md:table-cell">
-                    <p className="text-gray-700">{user.email}</p> 
+                    <p className="text-gray-700">{user.email}</p>
                   </td>
                   <td className="p-4 hidden sm:table-cell">
                     <p className="text-gray-700">{user.phone}</p>
@@ -861,11 +861,10 @@ const UserTable: React.FC = () => {
                   <td className="p-4">
                     <button
                       onClick={() => toggleStatus(user.id)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                        user.status === "active"
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${user.status === "active"
                           ? "bg-green-100 text-green-800 hover:bg-green-200"
                           : "bg-red-100 text-red-800 hover:bg-red-200"
-                      }`}
+                        }`}
                     >
                       <span className="flex items-center gap-1">
                         <span className={`w-2 h-2 rounded-full ${user.status === "active" ? "bg-green-500" : "bg-red-500"}`}></span>
@@ -875,7 +874,7 @@ const UserTable: React.FC = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex justify-end gap-2">
-                      <motion.button 
+                      <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => {
@@ -887,7 +886,7 @@ const UserTable: React.FC = () => {
                       >
                         <Eye size={18} />
                       </motion.button>
-                      <motion.button 
+                      <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => handleEdit(user)}
@@ -896,7 +895,7 @@ const UserTable: React.FC = () => {
                       >
                         <Edit2 size={18} />
                       </motion.button>
-                      <motion.button 
+                      <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => confirmDelete(user)}
@@ -926,7 +925,7 @@ const UserTable: React.FC = () => {
 
       {/* Pagination Section */}
       {totalItems > 0 && (
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           indexOfFirstItem={(currentPage - 1) * itemsPerPage + 1}
@@ -944,7 +943,7 @@ const UserTable: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
-            <UserDetails 
+            <UserDetails
               customer={selectedUser}
               onClose={() => setShowViewModal(false)}
               onEdit={() => {
@@ -957,7 +956,7 @@ const UserTable: React.FC = () => {
       )}
 
       {/* User Form Modal */}
-      <UserForm 
+      <UserForm
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
