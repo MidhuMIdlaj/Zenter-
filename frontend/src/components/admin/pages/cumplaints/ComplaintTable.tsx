@@ -411,8 +411,8 @@ const ComplaintTable: React.FC = () => {
       case "in-progress":
       case "processing":
         return "#3B82F6";
+        case "completed":
       case "resolved":
-      case "completed":
         return "#10B981";
       default:
         return "#6B7280";

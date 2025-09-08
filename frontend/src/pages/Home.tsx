@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { X, Play, CheckCircle, Users, Settings, Zap } from 'lucide-react';
 
 // Add type declarations for the Chatling global objects
 declare global {
@@ -6,18 +7,74 @@ declare global {
     chtlConfig?: {
       chatbotId: string;
       hideChatButton?: boolean;
-      // Add other configuration options if needed
     };
     Chatling?: {
       open: () => void;
       close: () => void;
-      // Add other methods if documented by Chatling
     };
   }
 }
 
 const Home = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showLearnMoreModal, setShowLearnMoreModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Product data for modals
+  const productDetails = {
+    'Solar Panels': {
+      icon: '☀️',
+      description: 'Our premium monocrystalline solar panels deliver industry-leading efficiency rates of up to 22%. Built to withstand extreme weather conditions with a 25-year performance warranty.',
+      features: [
+        '440W high-efficiency panels',
+        'Anti-reflective coating',
+        'Corrosion-resistant aluminum frame',
+        'Temperature coefficient: -0.35%/°C',
+        'Hail resistant up to 25mm diameter'
+      ],
+      specifications: [
+        'Dimensions: 2094 x 1038 x 35mm',
+        'Weight: 22.5kg',
+        'Cell Type: Monocrystalline PERC',
+        'Operating Temperature: -40°C to +85°C'
+      ]
+    },
+    'Smart Inverters': {
+      icon: '⚡',
+      description: 'Advanced string inverters with built-in Wi-Fi monitoring, allowing real-time performance tracking and remote diagnostics. Optimize energy production with smart MPPT technology.',
+      features: [
+        'WiFi & Ethernet connectivity',
+        'Real-time monitoring app',
+        '99.5% peak efficiency',
+        'Rapid shutdown compliance',
+        'Weather-resistant enclosure (IP65)'
+      ],
+      specifications: [
+        'Power Range: 3kW - 10kW',
+        'Input Voltage: 150V - 1000V DC',
+        'Output: 230V/400V AC',
+        'Operating Temperature: -25°C to +60°C'
+      ]
+    },
+    'Battery Storage': {
+      icon: '🔋',
+      description: 'Lithium iron phosphate (LiFePO4) battery systems providing reliable backup power and energy independence. Seamlessly integrate with your solar system for 24/7 clean energy.',
+      features: [
+        'Modular expandable design',
+        '10-year warranty',
+        '6000+ cycle life',
+        'Intelligent battery management',
+        'AC & DC coupling options'
+      ],
+      specifications: [
+        'Capacity: 5kWh - 20kWh',
+        'Voltage: 51.2V nominal',
+        'Charge/Discharge: 100A continuous',
+        'Operating Temperature: 0°C to 50°C'
+      ]
+    }
+  };
 
   useEffect(() => {
     // Enhanced scroll animation
@@ -52,7 +109,7 @@ const Home = () => {
     // Add configuration
     window.chtlConfig = { 
       chatbotId: "9798584874",
-      hideChatButton: true // Hide default button since we're using our own
+      hideChatButton: true
     };
     
     document.head.appendChild(script);
@@ -71,20 +128,153 @@ const Home = () => {
     window.location.href = '/employee-login'; 
   };
 
-  const handleChatToggle = () => {
-    setIsChatOpen(!isChatOpen);
+  const handleWatchDemo = () => {
+    setShowVideoModal(true);
+  };
+
+  const handleLearnMore = (productTitle : any) => {
+    setSelectedProduct(productTitle);
+    setShowLearnMoreModal(true);
+  };
+
+  const handleStartJourney = () => {
+    // Navigate to employee login for consultation booking
+    window.location.href = '/employee-login';
+  };
+
+  const VideoModal = () => (
+    <div className={`fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 ${showVideoModal ? 'visible' : 'invisible'}`}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl relative">
+        <button 
+          onClick={() => setShowVideoModal(false)}
+          className="absolute -top-4 -right-4 bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+        >
+          <X size={24} />
+        </button>
+        
+        <div className="p-6">
+          <h3 className="text-2xl font-bold text-gray-800 mb-4 text-center">Solar Energy Demo Video</h3>
+          
+          {/* Video Container */}
+          <div className="relative bg-gradient-to-br from-blue-900 to-green-800 rounded-xl overflow-hidden">
+            <div className="aspect-video flex items-center justify-center">
+              {/* Placeholder for actual video - replace with real video embed */}
+              <div className="text-center text-white">
+                <div className="mb-4">
+                  <Play size={64} className="mx-auto mb-4 opacity-80" />
+                </div>
+                <h4 className="text-xl font-semibold mb-2">Solar Installation Process</h4>
+                <p className="text-gray-200 mb-4">See how our expert team transforms homes with clean energy</p>
+                
+                {/* Demo Video Content */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 mx-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={16} className="text-green-400" />
+                      <span>Site Assessment</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={16} className="text-green-400" />
+                      <span>Custom Design</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={16} className="text-green-400" />
+                      <span>Professional Install</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Replace this section with actual video embed */}
+                <div className="mt-6">
+                  <iframe 
+                    className="w-full h-64 rounded-lg"
+                    src="https://www.youtube.com/embed/dHvjmpbabhI"
+                    title="Solar Demo Video"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                  <p className="text-xs text-gray-300 mt-2">* Replace with your actual solar demonstration video</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const LearnMoreModal = () => {
+    const product = selectedProduct ? productDetails[selectedProduct] : null;
     
-    // If Chatling provides an API to open/close the chat programmatically
-    if (window.Chatling) {
-      if (!isChatOpen) {
-        window.Chatling.open();
-      } else {
-        window.Chatling.close();
-      }
-    } else {
-      // Fallback: If Chatling API is not available, let the script handle it
-      // This might open the chat widget automatically when the button is clicked
-    }
+    return (
+      <div className={`fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 ${showLearnMoreModal ? 'visible' : 'invisible'}`}>
+        <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+          <button 
+            onClick={() => setShowLearnMoreModal(false)}
+            className="absolute -top-4 -right-4 bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-600 transition-colors z-10"
+          >
+            <X size={24} />
+          </button>
+          
+          {product && (
+            <div className="p-8">
+              <div className="text-center mb-6">
+                <div className="text-6xl mb-4">{product.icon}</div>
+                <h3 className="text-3xl font-bold text-gray-800 mb-2">{selectedProduct}</h3>
+                <div className="w-20 h-1 bg-gradient-to-r from-green-500 to-blue-500 mx-auto"></div>
+              </div>
+              
+              <p className="text-gray-600 text-lg leading-relaxed mb-8">{product.description}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Zap className="text-green-500" size={20} />
+                    Key Features
+                  </h4>
+                  <ul className="space-y-2">
+                    {product.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <CheckCircle size={16} className="text-green-500 mt-1 flex-shrink-0" />
+                        <span className="text-gray-600">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <Settings className="text-blue-500" size={20} />
+                    Specifications
+                  </h4>
+                  <ul className="space-y-2">
+                    {product.specifications.map((spec, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                        <span className="text-gray-600">{spec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="mt-8 pt-6 border-t border-gray-200 text-center">
+                <button 
+                  onClick={() => {
+                    setShowLearnMoreModal(false);
+                    handleEmployeeLogin();
+                  }}
+                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-3 rounded-full font-semibold hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all"
+                >
+                  Get Custom Quote
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -135,10 +325,11 @@ const Home = () => {
             Premium solar solutions that save money, reduce carbon footprint, and provide energy independence for your home or business
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <button className="bg-gradient-to-r from-green-500 to-green-600 text-white px-10 py-4 rounded-full font-semibold text-lg hover:from-green-600 hover:to-green-700 transform hover:-translate-y-2 hover:shadow-2xl transition-all">
-              Get Free Quote
-            </button>
-            <button className="border-2 border-white text-white px-10 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-gray-800 transform hover:-translate-y-2 hover:shadow-2xl transition-all">
+            <button 
+              onClick={handleWatchDemo}
+              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-10 py-4 rounded-full font-semibold text-lg hover:from-green-600 hover:to-green-700 transform hover:-translate-y-2 hover:shadow-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <Play size={20} />
               Watch Demo
             </button>
           </div>
@@ -211,7 +402,10 @@ const Home = () => {
                 <div className="p-8">
                   <h3 className="text-2xl font-bold text-gray-800 mb-4">{product.title}</h3>
                   <p className="text-gray-600 mb-6 leading-relaxed">{product.desc}</p>
-                  <button className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 rounded-full font-semibold hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all">
+                  <button 
+                    onClick={() => handleLearnMore(product.title as ProductKey)}
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 rounded-full font-semibold hover:from-green-600 hover:to-blue-600 transform hover:scale-105 transition-all"
+                  >
                     Learn More
                   </button>
                 </div>
@@ -257,7 +451,11 @@ const Home = () => {
           <p className="text-2xl mb-12 max-w-3xl mx-auto opacity-90">
             Join thousands of satisfied customers who've made the switch to clean, affordable solar energy
           </p>
-          <button className="bg-white text-gray-800 px-12 py-5 rounded-full font-bold text-xl hover:bg-gray-100 transform hover:-translate-y-2 hover:shadow-2xl transition-all">
+          <button 
+            onClick={handleStartJourney}
+            className="bg-white text-gray-800 px-12 py-5 rounded-full font-bold text-xl hover:bg-gray-100 transform hover:-translate-y-2 hover:shadow-2xl transition-all flex items-center gap-3 mx-auto"
+          >
+            <Users size={24} />
             Start Your Solar Journey
           </button>
         </div>
@@ -302,11 +500,15 @@ const Home = () => {
         </div>
       </footer>
 
+      {/* Modals */}
+      <VideoModal />
+      <LearnMoreModal />
+
       {/* Chatling Chatbot Button - Preserving your design */}
       <div className="fixed bottom-6 right-6 z-50">
       </div>
 
-      <style >{`
+      <style>{`
         .reveal {
           opacity: 0;
           transform: translateY(50px);
