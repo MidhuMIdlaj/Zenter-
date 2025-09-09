@@ -227,7 +227,7 @@ const EmployeeLogin: React.FC = () => {
 
               {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
+                {/* <div className="flex items-center"> */}
                   {/* <div className="relative">
                     <input
                       id="remember"
