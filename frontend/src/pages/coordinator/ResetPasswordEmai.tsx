@@ -403,6 +403,7 @@ export default function PasswordResetPage() {
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
             <button
               type="button"
+              onClick={() => navigate("/employee-login")}
               className="text-sm text-gray-600 hover:text-indigo-600 transition-colors duration-200"
             >
               Remember your password? Sign in
