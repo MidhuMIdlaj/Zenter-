@@ -227,20 +227,6 @@ const EmployeeLogin: React.FC = () => {
 
               {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
-                {/* <div className="flex items-center"> */}
-                  {/* <div className="relative">
-                    <input
-                      id="remember"
-                      name="remember"
-                      type="checkbox"
-                      className="h-5 w-5 rounded border-gray-300 text-blue-500 focus:ring-blue-400 cursor-pointer"
-                    />
-                    <div className="absolute inset-0 bg-blue-500/20 rounded scale-0 peer-checked:scale-150 opacity-0 peer-checked:opacity-100 transition-all duration-300"></div>
-                  </div>
-                  <label htmlFor="remember" className="ml-2 block text-sm text-blue-100 cursor-pointer select-none">
-                    Remember me
-                  </label>
-                </div> */}
                 <button
                   onClick={handleReset}
                   className="text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors relative group"
@@ -283,7 +269,6 @@ const EmployeeLogin: React.FC = () => {
               type="button"
               className="text-sm text-blue-300 hover:text-blue-200 transition-all duration-300 relative inline-flex items-center group"
             >
-              <span className="mr-1">Need help?</span> Contact IT Support
               <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300">&rarr;</span>
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-300 group-hover:w-full transition-all duration-300"></span>
             </button>
