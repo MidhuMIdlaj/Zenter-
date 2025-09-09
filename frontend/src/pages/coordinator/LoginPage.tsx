@@ -228,7 +228,7 @@ const EmployeeLogin: React.FC = () => {
               {/* Remember me & Forgot password */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <div className="relative">
+                  {/* <div className="relative">
                     <input
                       id="remember"
                       name="remember"
@@ -240,7 +240,7 @@ const EmployeeLogin: React.FC = () => {
                   <label htmlFor="remember" className="ml-2 block text-sm text-blue-100 cursor-pointer select-none">
                     Remember me
                   </label>
-                </div>
+                </div> */}
                 <button
                   onClick={handleReset}
                   className="text-sm font-medium text-blue-300 hover:text-blue-200 transition-colors relative group"

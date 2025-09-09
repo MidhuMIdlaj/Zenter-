@@ -48,7 +48,6 @@ const Table = <T extends Record<string, any>>({
   columns,
   sortConfig,
   onSort,
-  onToggleStatus,
   onView,
   onEdit,
   onDelete,
