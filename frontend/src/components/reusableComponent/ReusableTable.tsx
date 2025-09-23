@@ -48,6 +48,7 @@ const Table = <T extends Record<string, any>>({
   columns,
   sortConfig,
   onSort,
+  onToggleStatus,
   onView,
   onEdit,
   onDelete,
@@ -136,26 +137,30 @@ const Table = <T extends Record<string, any>>({
                         </div>
                       </div>
                     ) : column.key === statusKey ? (
-                      // ✅ Status Badge (handles active/inactive + complaint statuses)
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1
+                      // Status Badge with click handler
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onToggleStatus?.(item[idKey], item[statusKey] === "active" ? "inactive" : "active")}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 cursor-pointer
                           ${
                             item[statusKey] === "active"
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-800 hover:bg-green-200"
                               : item[statusKey] === "inactive"
-                              ? "bg-red-100 text-red-800"
+                              ? "bg-red-100 text-red-800 hover:bg-red-200"
                               : ["resolved", "completed", "accept"].includes(
                                   item[statusKey]
                                 )
-                              ? "bg-green-100 text-green-800"
+                              ? "bg-green-100 text-green-800 hover:bg-green-200"
                               : ["pending", "processing", "in-progress"].includes(
                                   item[statusKey]
                                 )
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
                               : ["cancelled", "rejected"].includes(item[statusKey])
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-600"
+                              ? "bg-red-100 text-red-800 hover:bg-red-200"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                           }`}
+                        title={`Click to change to ${item[statusKey] === "active" ? "inactive" : "active"}`}
                       >
                         <span
                           className={`w-2 h-2 rounded-full ${
@@ -177,9 +182,9 @@ const Table = <T extends Record<string, any>>({
                           }`}
                         ></span>
                         {item[statusKey]}
-                      </span>
+                      </motion.button>
                     ) : column.key === priorityKey ? (
-                      // ✅ Priority Badge
+                      // Priority Badge
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium transition-all
                           ${
@@ -209,7 +214,7 @@ const Table = <T extends Record<string, any>>({
                   </td>
                 ))}
 
-                {/* ✅ Actions */}
+                {/* Actions */}
                 <td className="p-4">
                   <div className="flex justify-end gap-2">
                     {onView && (

@@ -35,9 +35,9 @@ interface Attachment {
   id: string;
   name: string;
   url: string;
-  type: string; 
+  type: string;
   size: number;
-  file?: File; 
+  file?: File;
 }
 
 interface ChatMessage {
@@ -53,7 +53,7 @@ interface ChatMessage {
   senderRole: string;
   receiverRole: string;
   attachments?: Attachment[];
-  isOptimistic?: boolean; 
+  isOptimistic?: boolean;
 }
 
 const formatMessage = (message: any): ChatMessage => ({
@@ -76,7 +76,7 @@ const determineMessageType = (text: string): "text" | "task" | "urgent" => {
 const AdminCoordinatorChat: React.FC = () => {
   const [coordinators, setCoordinators] = useState<Coordinator[]>([]);
   const [selectedCoordinator, setSelectedCoordinator] =
-  useState<Coordinator | null>(null);
+    useState<Coordinator | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -100,32 +100,32 @@ const AdminCoordinatorChat: React.FC = () => {
 
   const addMessageSafely = (newMessage: ChatMessage) => {
     return (prev: ChatMessage[]) => {
-      const exists = prev.some(msg => 
-        msg.id === newMessage.id || 
-        (msg.conversationId === newMessage.conversationId && 
-         msg.senderId === newMessage.senderId && 
-         msg.text === newMessage.text && 
-         Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
+      const exists = prev.some(msg =>
+        msg.id === newMessage.id ||
+        (msg.conversationId === newMessage.conversationId &&
+          msg.senderId === newMessage.senderId &&
+          msg.text === newMessage.text &&
+          Math.abs(new Date(msg.time).getTime() - new Date(newMessage.time).getTime()) < 1000)
       );
-      
+
       if (exists) {
-        return prev; 
+        return prev;
       }
-      
+
       return [...prev, newMessage];
     };
   };
 
   const updateOptimisticMessage = (tempId: string, realMessage: ChatMessage) => {
-    setMessages(prev => 
-      prev.map(msg => 
-        msg.id === tempId 
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === tempId
           ? { ...realMessage, time: new Date(realMessage.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }
           : msg
       )
     );
   };
-  
+
   const initializeSocket = useCallback(() => {
     if (!userId || !token) return;
 
@@ -133,7 +133,7 @@ const AdminCoordinatorChat: React.FC = () => {
       socketRef.current.disconnect();
     }
 
-    socketRef.current = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||"http://localhost:5000", {
+    socketRef.current = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || "http://localhost:5000", {
       transports: ["websocket"],
       auth: { token },
     });
@@ -145,9 +145,9 @@ const AdminCoordinatorChat: React.FC = () => {
 
     socketRef.current.on("new_message", (message: ChatMessage) => {
       const conversationId = message.conversationId;
-      const isCurrentConversation = selectedCoordinator && 
+      const isCurrentConversation = selectedCoordinator &&
         conversationId === [userId, selectedCoordinator.employeeId].sort().join('_');
-      
+
       if (!isCurrentConversation) {
         setUnreadConversations(prev => ({
           ...prev,
@@ -156,18 +156,18 @@ const AdminCoordinatorChat: React.FC = () => {
       }
 
       const formattedMessage = formatMessage(message);
-      
+
       // If it's our own message, update the optimistic one, otherwise add new message
       if (message.senderId === userId) {
         // Find and update optimistic message
         setMessages(prev => {
-          const optimisticIndex = prev.findIndex(msg => 
-            msg.isOptimistic && 
-            msg.senderId === userId && 
+          const optimisticIndex = prev.findIndex(msg =>
+            msg.isOptimistic &&
+            msg.senderId === userId &&
             msg.conversationId === message.conversationId &&
             Math.abs(new Date(msg.time).getTime() - new Date(message.time).getTime()) < 5000
           );
-          
+
           if (optimisticIndex !== -1) {
             // Update optimistic message with real data
             const updated = [...prev];
@@ -195,15 +195,15 @@ const AdminCoordinatorChat: React.FC = () => {
     });
 
     socketRef.current.on("user_status_update", (update: { userId: string; status: string }) => {
-      setCoordinators(prev => prev.map(coordinator => 
+      setCoordinators(prev => prev.map(coordinator =>
         coordinator.employeeId === update.userId
-          ? { 
-              ...coordinator, 
-              status: 
-                update.status === "available" || update.status === "busy" || update.status === "offline"
-                  ? update.status
-                  : "offline"
-            }
+          ? {
+            ...coordinator,
+            status:
+              update.status === "available" || update.status === "busy" || update.status === "offline"
+                ? update.status
+                : "offline"
+          }
           : coordinator
       ));
     });
@@ -244,13 +244,13 @@ const AdminCoordinatorChat: React.FC = () => {
 
     try {
       const newAttachments: Attachment[] = [];
-      
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         // Use the actual MIME type from the file
         const fileType = file.type;
-        
+
         // Mock upload progress
         await new Promise(resolve => {
           let progress = 0;
@@ -268,7 +268,7 @@ const AdminCoordinatorChat: React.FC = () => {
           id: `file-${Date.now()}-${i}`,
           name: file.name,
           url: URL.createObjectURL(file),
-          type: fileType, 
+          type: fileType,
           size: file.size,
           file,
         });
@@ -298,6 +298,7 @@ const AdminCoordinatorChat: React.FC = () => {
         setLoading(true);
         const response = await fetchEmployees(1, 10);
         const employees = response.data.employees || [];
+
         const coordinatorsWithMessages = await Promise.all(
           employees
             .filter((e: any) => e.position?.toLowerCase() === "coordinator")
@@ -306,21 +307,17 @@ const AdminCoordinatorChat: React.FC = () => {
                 userId!,
                 e.id
               );
-              const lastMessage = history.length > 0 
-                ? history[history.length - 1] 
+              const lastMessage = history.length > 0
+                ? history[history.length - 1]
                 : null;
-              
               return {
                 id: e.id,
                 name: e.employeeName,
                 avatar: e.employeeName?.slice(0, 2).toUpperCase() || "CO",
                 status: e.status || "offline",
                 lastMessage: lastMessage?.text || "No messages yet",
-                time: lastMessage 
-                  ? new Date(lastMessage.time).toLocaleTimeString([], { 
-                      hour: "2-digit", 
-                      minute: "2-digit" 
-                    })
+                time: lastMessage
+                  ? new Date(lastMessage.time).toISOString()
                   : "",
                 employeeId: e.id,
                 role: "coordinator"
@@ -328,7 +325,15 @@ const AdminCoordinatorChat: React.FC = () => {
             })
         );
 
-        setCoordinators(coordinatorsWithMessages);
+coordinatorsWithMessages.sort((a, b) => {
+  if (!a.time && !b.time) return 0;
+  if (!a.time) return 1;
+  if (!b.time) return -1;
+  return new Date(b.time).getTime() - new Date(a.time).getTime();
+});
+
+setCoordinators(coordinatorsWithMessages);
+
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
@@ -339,7 +344,6 @@ const AdminCoordinatorChat: React.FC = () => {
     if (userId) loadData();
   }, [userId]);
 
-  // Fetch chat history when a coordinator is selected
   const loadChatHistory = useCallback(async () => {
     if (!selectedCoordinator || !userId) return;
 
@@ -365,19 +369,19 @@ const AdminCoordinatorChat: React.FC = () => {
 
   const handleSelectCoordinator = async (coordinator: Coordinator) => {
     setSelectedCoordinator(coordinator);
-    
+
     if (userId && coordinator.employeeId) {
       const conversationId = [userId, coordinator.employeeId].sort().join('_');
-      
+
       // Mark messages as read
       await ChatService.markMessagesAsRead(conversationId, userId);
-      
+
       // Clear unread count
       setUnreadConversations(prev => ({
         ...prev,
         [conversationId]: 0
       }));
-      
+
       // Load chat history
       const history = await ChatService.getChatHistory(userId, coordinator.employeeId);
       setMessages(history.map(formatMessage));
@@ -390,13 +394,13 @@ const AdminCoordinatorChat: React.FC = () => {
     const messageText = newMessage.trim();
     const conversationId = [userId, selectedCoordinator.employeeId].sort().join('_');
     const tempId = `temp-${Date.now()}-${Math.random()}`;
-    
+
     setUnreadConversations(prev => {
       const updated = { ...prev };
       delete updated[conversationId];
       return updated;
     });
-    
+
     await ChatService.markMessagesAsRead(conversationId, userId);
 
     if (socketRef.current) {
@@ -425,22 +429,22 @@ const AdminCoordinatorChat: React.FC = () => {
       // Clear input immediately
       setNewMessage("");
       setAttachments([]);
-      
+
       // Add optimistic message
       setMessages(prev => addMessageSafely(formatMessage(tempMessage))(prev));
 
       const savedMessage = await ChatService.sendMessage(tempMessage, filesToSend);
-      
+
       // Update optimistic message with real message data
       updateOptimisticMessage(tempId, savedMessage);
-      
+
       // Emit through socket for real-time delivery
       if (socketRef.current) {
         socketRef.current.emit("send_message", savedMessage, (deliveryConfirmation: any) => {
           if (deliveryConfirmation?.success) {
             setMessages(prev =>
               prev.map(msg =>
-                msg.id === tempId 
+                msg.id === tempId
                   ? { ...msg, id: savedMessage.id, isDelivered: true, attachments: savedMessage.attachments }
                   : msg
               )
@@ -509,11 +513,10 @@ const AdminCoordinatorChat: React.FC = () => {
     <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl shadow-xl overflow-hidden h-[calc(100vh)]">
       {/* Connection Status Indicator */}
       <div
-        className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${
-          socketConnected
+        className={`fixed top-4 right-4 z-50 px-3 py-1 rounded-full text-sm font-medium ${socketConnected
             ? "bg-green-100 text-green-800"
             : "bg-red-100 text-red-800"
-        }`}
+          }`}
       >
       </div>
       {!selectedCoordinator ? (
@@ -585,7 +588,6 @@ const AdminCoordinatorChat: React.FC = () => {
                                 Coordinator
                               </span>
                             </div>
-                            <span>{coordinator.employeeId}</span>
                           </div>
                           <p className="text-sm text-gray-600 truncate mt-1">
                             {coordinator.lastMessage}
@@ -622,7 +624,7 @@ const AdminCoordinatorChat: React.FC = () => {
                 >
                   <ChevronLeft size={20} className="text-gray-600" />
                 </button>
-                
+
                 <div className="flex items-center space-x-3">
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
@@ -636,7 +638,7 @@ const AdminCoordinatorChat: React.FC = () => {
                       )} rounded-full border-2 border-white`}
                     ></div>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-semibold text-gray-800">
                       {selectedCoordinator.name}
@@ -668,9 +670,8 @@ const AdminCoordinatorChat: React.FC = () => {
             {messages.map((message, index) => (
               <div
                 key={`${message.id}-${index}`}
-                className={`flex ${
-                  message.senderId === userId ? "justify-end" : "justify-start"
-                }`}
+                className={`flex ${message.senderId === userId ? "justify-end" : "justify-start"
+                  }`}
               >
                 <div className="max-w-xs lg:max-w-md">
                   {message.senderId !== userId && (
@@ -680,13 +681,12 @@ const AdminCoordinatorChat: React.FC = () => {
                   )}
 
                   <div
-                    className={`px-4 py-3 rounded-2xl shadow-sm ${
-                      message.senderId === userId
+                    className={`px-4 py-3 rounded-2xl shadow-sm ${message.senderId === userId
                         ? `bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
                         : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(
-                            message.messageType
-                          )}`
-                    }`}
+                          message.messageType
+                        )}`
+                      }`}
                   >
                     {message.text && <p className="break-words">{message.text}</p>}
 
@@ -719,9 +719,8 @@ const AdminCoordinatorChat: React.FC = () => {
                     )}
 
                     <div
-                      className={`flex items-center justify-between mt-2 text-xs ${
-                        message.senderId === userId ? "text-blue-100" : "text-gray-500"
-                      }`}
+                      className={`flex items-center justify-between mt-2 text-xs ${message.senderId === userId ? "text-blue-100" : "text-gray-500"
+                        }`}
                     >
                       <span>{message.time}</span>
                       {message.senderId === userId && (
@@ -781,8 +780,8 @@ const AdminCoordinatorChat: React.FC = () => {
                   <div key={attachment.id} className="relative group">
                     {attachment.type === 'image' ? (
                       <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
-                        <img 
-                          src={attachment.url} 
+                        <img
+                          src={attachment.url}
                           alt={attachment.name}
                           className="w-full h-full object-cover"
                         />
@@ -809,8 +808,8 @@ const AdminCoordinatorChat: React.FC = () => {
             {/* Upload progress */}
             {isUploading && (
               <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full" 
+                <div
+                  className="bg-blue-600 h-2 rounded-full"
                   style={{ width: `${uploadProgress}%` }}
                 ></div>
               </div>
@@ -818,19 +817,19 @@ const AdminCoordinatorChat: React.FC = () => {
 
             <div className="flex items-end space-x-3 relative">
               <div className="flex space-x-1 mb-1 flex-shrink-0">
-                <button 
+                <button
                   onClick={() => fileInputRef.current?.click()}
                   className="p-2 rounded-full hover:bg-blue-100 transition-colors"
                 >
                   <Paperclip size={20} className="text-gray-500" />
                 </button>
-                <button 
+                <button
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="p-2 rounded-full hover:bg-blue-100 transition-colors"
                 >
                   <Smile size={20} className="text-gray-500" />
                 </button>
-                
+
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -840,7 +839,7 @@ const AdminCoordinatorChat: React.FC = () => {
                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
                 />
               </div>
-              
+
               <div className="flex-1 relative">
                 <input
                   type="text"
@@ -854,7 +853,7 @@ const AdminCoordinatorChat: React.FC = () => {
                   className="w-full px-4 py-3 pr-12 bg-gray-50 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all disabled:opacity-50 resize-none"
                 />
               </div>
-              
+
               <button
                 onClick={handleSendMessage}
                 disabled={(!newMessage.trim() && attachments.length === 0) || !socketConnected}
@@ -866,7 +865,7 @@ const AdminCoordinatorChat: React.FC = () => {
               {/* Emoji Picker */}
               {showEmojiPicker && (
                 <div className="absolute bottom-14 left-14 z-10">
-                  <EmojiPicker 
+                  <EmojiPicker
                     onEmojiClick={handleEmojiClick}
                     width={300}
                     height={350}

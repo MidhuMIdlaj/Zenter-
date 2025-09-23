@@ -153,6 +153,7 @@ const CustomerTable: React.FC = () => {
       setLoading(true);
       
       const response = await ClientListApi(page, itemsPerPage);
+      console.log(response, "client list response");
       if (response && response.success) {
         const mappedClients = response.clients
           .map((client: any) => ({
@@ -165,13 +166,14 @@ const CustomerTable: React.FC = () => {
             status: client.status as "active" | "inactive",
             avatar: client.clientName?.charAt(0) || 'U',
             attendanceData: client.attendedDate,
-            productName: client.products.productName || "",
+            productName: client.products[0].productName || "",
             quantity: client.products[0].quantity || "",
             brand: client.products[0].brand || "",
             model: client.products[0].model || "",
             warrantyDate: client.products[0].warrantyDate || "",
             guaranteeDate: client.products[0].guaranteeDate || ""
           }));
+          console.log(mappedClients, "mapped clients");
           
         setCustomers(mappedClients);
         setTotalItems(response.total);
@@ -353,6 +355,20 @@ const CustomerTable: React.FC = () => {
       const clientDetails = await getClientById(customer.id);
       
       if (clientDetails) {
+        // Map products to format date fields for inputs correctly
+        const productsWithFormattedDates: Product[] = clientDetails.products?.length ? clientDetails.products.map((product: any) => ({
+          ...product,
+          warrantyDate: formatDateForInput(product.warrantyDate),
+          guaranteeDate: formatDateForInput(product.guaranteeDate)
+        })) : [{
+          productName: customer.productName || "",
+          quantity: customer.quantity || "",
+          brand: customer.brand || "",
+          model: customer.model || "",
+          warrantyDate: formatDateForInput(customer.warrantyDate),
+          guaranteeDate: formatDateForInput(customer.guaranteeDate)
+        }];
+
         setFormData({
           id: customer.id,
           email: customer.email,
@@ -361,14 +377,7 @@ const CustomerTable: React.FC = () => {
           contactNumber: customer.phone,
           address: `${customer.place}, ${customer.district}`,
           status: customer.status,
-          products: clientDetails.products?.length ? clientDetails.products : [{
-            productName: customer.productName || "",
-            quantity: customer.quantity || "",
-            brand: customer.brand || "",
-            model: customer.model || "",
-            warrantyDate: formatDateForInput(customer.warrantyDate),
-            guaranteeDate: formatDateForInput(customer.guaranteeDate)
-          }],
+          products: productsWithFormattedDates,
           lastLogin: customer.lastLogin || ""
         });
         setShowModal(true);
@@ -634,6 +643,7 @@ const CustomerTable: React.FC = () => {
       onSort={requestSort}
       onToggleStatus={(id) => toggleStatus(id)}
       onView={(customer) => {
+        console.log(customer, "view customer");
         setSelectedCustomer(customer);
         setShowViewModal(true);
       }}

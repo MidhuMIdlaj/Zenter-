@@ -137,13 +137,13 @@ const ChatWithMechanics: React.FC = () => {
       try {
         setLoading(true);
 
-        // Fetch all mechanics and admins
         const employeeResponse = await fetchEmployees(page, 10);
         const allEmployees = employeeResponse.data.employees || [];
 
         const adminResponse = await getAllAdmin(page, 10);
         const allAdmins = adminResponse.data?.admins || [];
-        // Fetch last messages for mechanics
+
+        // Mechanics: add `sortableTime`
         const mechanicsWithMessages = await Promise.all(
           allEmployees
             .filter((employee: any) => employee.position?.toLowerCase() === 'mechanic')
@@ -155,7 +155,6 @@ const ChatWithMechanics: React.FC = () => {
               const lastMessage = history.length > 0
                 ? history[history.length - 1]
                 : null;
-
               return {
                 id: employee.id || Math.random() * 1000,
                 name: employee.employeeName || 'Unknown Mechanic',
@@ -163,7 +162,8 @@ const ChatWithMechanics: React.FC = () => {
                 lastMessage: lastMessage?.text || 'No messages yet',
                 time: lastMessage
                   ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  : "",
+                sortableTime: lastMessage ? new Date(lastMessage.time).toISOString() : "", // <-- add
                 isOnline: employee.status === 'available' || employee.status === 'busy',
                 unreadCount: employee.unreadCount || 0,
                 employeeId: employee.id || `MEC_${employee._id}`,
@@ -173,7 +173,8 @@ const ChatWithMechanics: React.FC = () => {
               };
             })
         );
-        // Fetch last messages for admins
+
+        // Admins: add `sortableTime`
         const adminsWithMessages = await Promise.all(
           allAdmins.map(async (admin: any) => {
             const history = await ChatService.getChatHistory(
@@ -191,7 +192,8 @@ const ChatWithMechanics: React.FC = () => {
               lastMessage: lastMessage?.text || 'No messages yet',
               time: lastMessage
                 ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                : "",
+              sortableTime: lastMessage ? new Date(lastMessage.time).toISOString() : "", // <-- add
               isOnline: admin.status === 'available' || admin.status === 'busy',
               unreadCount: admin.unreadCount || 0,
               employeeId: admin.id,
@@ -201,7 +203,17 @@ const ChatWithMechanics: React.FC = () => {
             };
           })
         );
+
         const combinedUsers = [...mechanicsWithMessages, ...adminsWithMessages];
+
+        // Sort users by latest message time (descending)
+        combinedUsers.sort((a, b) => {
+          if (!a.sortableTime && !b.sortableTime) return 0;
+          if (!a.sortableTime) return 1;
+          if (!b.sortableTime) return -1;
+          return new Date(b.sortableTime).getTime() - new Date(a.sortableTime).getTime();
+        });
+
         setUsers((prev) => (page === 1 ? combinedUsers : [...prev, ...combinedUsers]));
         setHasMore(allEmployees.length === 10 || allAdmins.length === 10);
       } catch (error) {
@@ -213,6 +225,7 @@ const ChatWithMechanics: React.FC = () => {
 
     if (userId) loadUsers();
   }, [page, userId]);
+
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -697,8 +710,8 @@ const ChatWithMechanics: React.FC = () => {
                   )}
                   <div
                     className={`px-4 py-3 rounded-2xl shadow-sm ${message.senderId === userId
-                        ? `bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
-                        : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(message.messageType)}`
+                      ? `bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-tr-md ${message.isOptimistic ? 'opacity-70' : ''}`
+                      : `bg-white text-gray-800 rounded-tl-md border border-gray-100 ${getMessageTypeStyle(message.messageType)}`
                       }`}
                   >
                     {message.text && <p className="break-words">{message.text}</p>}

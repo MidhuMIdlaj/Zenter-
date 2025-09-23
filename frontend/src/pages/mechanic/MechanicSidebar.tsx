@@ -1,19 +1,20 @@
-// src/components/mechanic/MechanicSidebar.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Home, PenTool as Tool, History, Settings, LogOut, MessageSquare } from 'lucide-react';
+import { Home, PenTool as Tool, History, Settings, LogOut, MessageSquare, X } from 'lucide-react';
 import { selectEmployeeAuthData } from '../../store/selectors';
 import { clearEmployeeAuth } from '../../store/EmployeeAuthSlice';
 import ConfirmationDialog from '../../components/reusableComponent/ConfirmationDialog';
 import { io, Socket } from 'socket.io-client';
+import { NotificationService } from '../../api/NotificationService/NotificationService';
 
 interface MechanicSidebarProps {
   activePage: string;
   unreadCount: number; 
+  onClose?: () => void; // Add onClose prop for mobile
 }
 
-const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
+const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,7 +26,7 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
   const token = employeeData?.token;
   const userId = employeeData?.id;
 
-   const showToast = (notification : any) => {
+  const showToast = (notification: any) => {
     if (location.pathname === "/mechanic/chat" && notification.type === "chat") return;
 
     const toast = document.createElement('div');
@@ -106,14 +107,14 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     }, 10000);
   };
   
-    useEffect(() => {
-      const storedCount = localStorage.getItem('coordinatorUnreadChat');
-      if (storedCount) setUnreadMessages(parseInt(storedCount));
-    }, []);
+  useEffect(() => {
+    const storedCount = localStorage.getItem('coordinatorUnreadChat');
+    if (storedCount) setUnreadMessages(parseInt(storedCount));
+  }, []);
   
   const isActive = (page: any) => {
     return activePage === page ? 
-      'bg-blue-700 text-white' : 
+      'bg-blue-700 text-white shadow-md' : 
       'text-gray-300 hover:bg-blue-700/50 hover:text-white';
   };
   
@@ -145,12 +146,12 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     if (!token || !userId) return;
 
     const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000', {
-    transports: ['websocket'],
-    auth: { token },
-    withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+      transports: ['websocket'],
+      auth: { token },
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     newSocket.on('connect', () => {
@@ -171,7 +172,7 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
       }
     });
 
-     newSocket.on('new_message', (notification) => {
+    newSocket.on('new_message', (notification) => {
       if (location.pathname !== '/mechanic/chat') {
         const newCount = unreadMessages + 1;
         setUnreadMessages(newCount);
@@ -187,24 +188,23 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     });
 
     newSocket.on('new_video_call_notification', (notification) => {
-      
-     if (notification.recipientType === 'mechanic') {
-      if ('vibrate' in navigator) navigator.vibrate(200);
-      
-      showToast({
+      if (notification.recipientType === 'mechanic') {
+        if ('vibrate' in navigator) navigator.vibrate(200);
+        
+        showToast({
           title: 'Video Call Invitation',
           message: notification.message,
           type: 'video_call',
           callLink: notification.callLink,
         });
-      const audio = new Audio('/notification-sound.mp3');
-      audio.play().catch(e => console.log('Audio play failed:', e));
-    }
-   });
+        const audio = new Audio('/notification-sound.mp3');
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      }
+    });
 
     newSocket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
+      console.error('Socket error:', error);
+    });
 
     setSocket(newSocket);
 
@@ -216,7 +216,7 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
       newSocket.off('error');
       newSocket.disconnect();
     };
-  }, [token, userId, location.pathname]);
+  }, [token, userId, location.pathname, unreadMessages]);
 
   // Reset count when on chat page
   useEffect(() => {
@@ -226,84 +226,115 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage }) => {
     }
   }, [location.pathname]);
 
-
   const handleLogout = () => {
     dispatch(clearEmployeeAuth());
     navigate("/employee-login");
     setShowLogoutDialog(false);
   };
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (onClose) onClose(); // Close sidebar on mobile after navigation
+  };
   
   const getInitials = () => {
     if (!employeeData) return 'ME';
-    return `${employeeData.employeeName ? employeeData.employeeName[0] : ''}${employeeData.employeeName ? employeeData.employeeName[0] : ''}`;
+    const name = employeeData.employeeName || '';
+    return name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase();
   };
 
   return (
-    <div className="fixed h-full w-64 bg-blue-800 shadow-lg z-10 transition-all">
-      <div className="p-5 border-b border-blue-700">
+    <div className="h-full w-64 bg-blue-800 shadow-lg transition-all flex flex-col">
+      {/* Mobile Close Button */}
+      <div className="lg:hidden absolute top-4 right-4 z-10">
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full bg-blue-700 hover:bg-blue-600 transition-colors"
+        >
+          <X size={20} className="text-white" />
+        </button>
+      </div>
+
+      {/* Header */}
+      <div className="p-5 border-b border-blue-700 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <Tool size={28} className="text-white" />
           <h1 className="text-xl font-bold text-white">Zenster</h1>
         </div>
       </div>
       
-      <div className="p-4">
+      {/* Navigation */}
+      <div className="p-4 flex-1 overflow-y-auto">
         <div className="mb-8">
           <p className="text-xs uppercase tracking-wider text-blue-400 mb-2">Main Menu</p>
           <nav className="space-y-1">
-            <Link 
-              to="/mechanic/dashboard" 
-              className={`flex items-center px-4 py-3 rounded-lg transition-all ${isActive('dashboard')}`}
+            <button 
+              onClick={() => handleNavigation("/mechanic/dashboard")}
+              className={`w-full flex items-center px-4 py-3 rounded-lg transition-all touch-manipulation min-h-[44px] ${isActive('dashboard')}`}
             >
-              <Home size={20} className="mr-3" />
-              <span>Dashboard</span>
-            </Link>
+              <Home size={20} className="mr-3 flex-shrink-0" />
+              <span className="font-medium truncate">Dashboard</span>
+            </button>
             
-            <Link 
-              to="/mechanic/tasks" 
-              className={`flex items-center px-4 py-3 rounded-lg transition-all ${isActive('tasks')}`}
+            <button 
+              onClick={() => handleNavigation("/mechanic/tasks")}
+              className={`w-full flex items-center px-4 py-3 rounded-lg transition-all touch-manipulation min-h-[44px] ${isActive('tasks')}`}
             >
-              <Tool size={20} className="mr-3" />
-              <span>My Tasks</span>
-            </Link>
+              <Tool size={20} className="mr-3 flex-shrink-0" />
+              <span className="font-medium truncate">My Tasks</span>
+            </button>
             
-            <Link 
-              to="/mechanic/chat" 
-              className={`flex items-center px-4 py-3 rounded-lg transition-all ${isActive('complaints')}`}            >
-              <div className="relative mr-3">
+            <button 
+              onClick={() => handleNavigation("/mechanic/chat")}
+              className={`w-full flex items-center px-4 py-3 rounded-lg transition-all touch-manipulation min-h-[44px] ${isActive('chat')}`}
+            >
+              <div className="relative mr-3 flex-shrink-0">
                 <MessageSquare size={20} />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-xs font-medium">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
               </div>
-              <span>Chat with coordinator</span>
-            </Link>
+              <span className="font-medium truncate">Chat with coordinator</span>
+            </button>
           </nav>
         </div>
         
+        {/* Account Section */}
         <div>
           <p className="text-xs uppercase tracking-wider text-blue-400 mb-2">Account</p>
           <nav className="space-y-1">
             <button 
               onClick={() => setShowLogoutDialog(true)}
-              className="w-full flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-red-600/70 hover:text-white transition-all"
+              className="w-full flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-red-600/70 hover:text-white transition-all touch-manipulation min-h-[44px]"
             >
-              <LogOut size={20} className="mr-3" />
-              <span>Sign Out</span>
+              <LogOut size={20} className="mr-3 flex-shrink-0" />
+              <span className="font-medium truncate">Sign Out</span>
             </button>
           </nav>
         </div>
       </div>
-      <button onClick={()=> navigate('mechanic/profile')}>
-      <div className="absolute bottom-0 w-full p-4 border-t border-blue-700">
+
+      {/* Profile Section at Bottom */}
+      <button 
+        onClick={() => handleNavigation('/mechanic/profile')}
+        className="w-full p-4 border-t border-blue-700 hover:bg-blue-700/50 transition-colors flex-shrink-0"
+      >
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-            <span className="text-white font-medium">{getInitials()}</span>
+          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-medium text-sm">{getInitials()}</span>
           </div>
-          <div>
-            <p className="text-white font-medium">{`${employeeData?.employeeName || ''} ${employeeData?.employeeName || ''}`}</p>
-            <p className="text-blue-300 text-sm">Mechanic</p>
+          <div className="min-w-0 text-left">
+            <p className="text-white font-medium text-sm truncate">
+              {employeeData?.employeeName || 'Unknown'}
+            </p>
+            <p className="text-blue-300 text-xs">Mechanic</p>
           </div>
         </div>
-      </div>
       </button>
+
+      {/* Logout Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={showLogoutDialog}
         onClose={() => setShowLogoutDialog(false)}

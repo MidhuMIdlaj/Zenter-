@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Briefcase, RefreshCw, Search, Filter, Check, ChevronDown } from "lucide-react";
+import { Plus, Briefcase,  Search, Filter, Check, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 import Swal from 'sweetalert2';
@@ -126,7 +126,6 @@ const EmployeeTable: React.FC = () => {
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
-  // Effect to handle search or fetch based on debounced search term
   useEffect(() => {
     if (debouncedSearchTerm.length >= MIN_SEARCH_CHARS || statusFilter !== 'all' || positionFilter !== 'all') {
       searchEmployees();
@@ -241,12 +240,13 @@ const handleInputChange = (
 
   // Modal actions
   const openEditModal = (employee: EmployeeFormData) => {
+    console.log("Editing employee:", employee);
     setFormData({
-      id: employee.id, 
-      date: employee.date || "",
+      id: employee.id,
+      date: employee.date || Date.now().toString(),
       emailId: employee.emailId,
       employeeName: employee.employeeName,
-      joinDate: employee.joinDate,
+      joinDate:employee.joinDate ? new Date(employee.joinDate).toISOString().slice(0,10): "",
       contactNumber: employee.contactNumber,
       address: employee.address || "",
       position: employee.position as 'coordinator' | 'mechanic',
@@ -556,7 +556,6 @@ const handleInputChange = (
         isLoading={isLoading}
         currentItems={employees}
         onView={openViewModal}
-        onEdit={openEditModal}
         onDelete={openDeleteModal}
         onToggleStatus={toggleEmployeeStatus}
       />

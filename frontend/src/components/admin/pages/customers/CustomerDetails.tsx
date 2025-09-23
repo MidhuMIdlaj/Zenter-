@@ -26,7 +26,7 @@ const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onClose,
   onEdit,
 }) => {
-
+    console.log(customer, "1241234")
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">

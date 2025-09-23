@@ -273,7 +273,7 @@ export default function Dashboard() {
 
   const stats = [
     {
-      title: 'TOTAL COMPLAINTS',
+      title: 'TOTAL COMPLAINTS IN SYSTEM',
       value: totalComplaint,
       changeText: 'All time',
       icon: <CreditCard className="w-6 h-6 text-indigo-500" />,

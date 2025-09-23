@@ -12,6 +12,7 @@ import 'react-toastify/dist/ReactToastify.css';
 const MechanicLayout = () => {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Add sidebar state for mobile
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -81,7 +82,6 @@ const MechanicLayout = () => {
         return [{ ...data, type: 'complaint' }, ...prev];
       });
       setUnreadCount((prev) => prev + 1);
-      // setGlobalUnreadCount((prev) => prev + 1);
       localStorage.setItem('mechanicUnreadCount', (globalUnreadCount + 1).toString());
       const toastId = `complaint_${data._id}`;
       if (!toast.isActive(toastId)) {
@@ -208,9 +208,30 @@ const MechanicLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <MechanicSidebar activePage={getActivePage()} unreadCount={globalUnreadCount} />
-      <div className="md:ml-64 min-h-screen">
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar with responsive behavior */}
+      <div
+        className={`fixed top-0 left-0 h-screen w-64 bg-blue-800 shadow-lg z-50
+        transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        transition-transform duration-300 ease-in-out lg:translate-x-0`}
+      >
+        <MechanicSidebar 
+          activePage={getActivePage()} 
+          unreadCount={globalUnreadCount}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col">
         <MechanicHeader
           mechanicName={mechanicName}
           isCheckedIn={isCheckedIn}
@@ -220,58 +241,65 @@ const MechanicLayout = () => {
           notificationCount={globalUnreadCount}
           socket={socket}
         />
-        <div className="p-6">
+        
+        {/* Main content with responsive margin */}
+        <main className="flex-1 lg:ml-64 pt-16 p-4 sm:p-6 overflow-auto">
           <Outlet context={{ socket }} />
-        </div>
+        </main>
       </div>
+
+      {/* Notification Panel with responsive positioning */}
       {showNotifications && (
-        <NotificationPanel
-          onClose={() => setShowNotifications(false)}
-          recipientId={mechanicId}
-          notifications={notifications}
-          onNewNotification={(notification) => {
-            setNotifications((prev) => {
-              if (prev.some((n) => n._id === notification._id)) return prev;
-              return [notification, ...prev];
-            });
-            // Do not increment counts here; handled in socket events
-          }}
-          onMarkAsRead={async (notificationId) => {
-            await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/${notificationId}/mark-read`,
-              {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
-                credentials: 'include',
-              }
-            );
-            setNotifications((prev) =>
-              prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
-            );
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-            setGlobalUnreadCount((prev) => Math.max(0, prev - 1));
-            socket?.emit('chat_notifications_read', { userId, notificationId });
-          }}
-          onMarkAllAsRead={async () => {
-            await fetch(
-              `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/mark-all-chat-read`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ userId: mechanicId }),
-                credentials: 'include',
-              }
-            );
-            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-            setUnreadCount(0);
-            setGlobalUnreadCount(0);
-            socket?.emit('all_chat_notifications_read', { userId });
-          }}
-          socket={socket}
-        />
+        <div className="fixed inset-0 flex items-start justify-center sm:justify-end mt-16 sm:mt-16 mx-2 sm:mr-4 z-50 lg:mr-4">
+          <div className="w-full max-w-sm sm:max-w-md">
+            <NotificationPanel
+              onClose={() => setShowNotifications(false)}
+              recipientId={mechanicId}
+              notifications={notifications}
+              onNewNotification={(notification) => {
+                setNotifications((prev) => {
+                  if (prev.some((n) => n._id === notification._id)) return prev;
+                  return [notification, ...prev];
+                });
+              }}
+              onMarkAsRead={async (notificationId) => {
+                await fetch(
+                  `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/${notificationId}/mark-read`,
+                  {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                    credentials: 'include',
+                  }
+                );
+                setNotifications((prev) =>
+                  prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
+                );
+                setUnreadCount((prev) => Math.max(0, prev - 1));
+                setGlobalUnreadCount((prev) => Math.max(0, prev - 1));
+                socket?.emit('chat_notifications_read', { userId, notificationId });
+              }}
+              onMarkAllAsRead={async () => {
+                await fetch(
+                  `${import.meta.env.VITE_API_BASE_URL}/notification/notifications/mark-all-chat-read`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ userId: mechanicId }),
+                    credentials: 'include',
+                  }
+                );
+                setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                setUnreadCount(0);
+                setGlobalUnreadCount(0);
+                socket?.emit('all_chat_notifications_read', { userId });
+              }}
+              socket={socket}
+            />
+          </div>
+        </div>
       )}
       <ToastContainer limit={1} />
     </div>

@@ -143,7 +143,7 @@ const ChatWithCoordinators: React.FC = () => {
     setShowEmojiPicker(false); 
   };
 
- useEffect(() => {
+useEffect(() => {
   const loadCoordinators = async () => {
     try {
       setLoading(true);
@@ -168,7 +168,8 @@ const ChatWithCoordinators: React.FC = () => {
               lastMessage: lastMessage?.text || 'No messages yet',
               time: lastMessage 
                 ? new Date(lastMessage.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                : "",
+              sortableTime: lastMessage ? new Date(lastMessage.time).toISOString() : "", // <-- added for sorting
               isOnline: employee.status === 'available' || employee.status === 'busy',
               unreadCount: employee.unreadCount || 0,
               employeeId: employee.id || `COORD_${employee._id}`,
@@ -182,6 +183,14 @@ const ChatWithCoordinators: React.FC = () => {
           })
       );
 
+      // Key sorting logic: latest at top
+      coordinatorsWithMessages.sort((a, b) => {
+        if (!a.sortableTime && !b.sortableTime) return 0;
+        if (!a.sortableTime) return 1;
+        if (!b.sortableTime) return -1;
+        return new Date(b.sortableTime).getTime() - new Date(a.sortableTime).getTime();
+      });
+
       setCoordinators((prev) => (page === 1 ? coordinatorsWithMessages : [...prev, ...coordinatorsWithMessages]));
       setHasMore(coordinatorsWithMessages.length === 10);
     } catch (error) {
@@ -192,7 +201,8 @@ const ChatWithCoordinators: React.FC = () => {
   };
 
   if (userId) loadCoordinators(); 
- }, [page, userId]); 
+}, [page, userId]);
+
 
   useEffect(() => {
     if (!userId || !token) return;

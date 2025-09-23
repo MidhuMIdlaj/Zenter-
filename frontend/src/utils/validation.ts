@@ -98,55 +98,55 @@ export const validateEmail = (email: string): string | null => {
     return errors;
   };
   
-  // Validate all fields in step 2 (product details)
 export const validateStep2 = (formData: any): Record<string, string> => {
   const errors: Record<string, string> = {};
   const product = formData.products?.[0] || {};
+
+  const isEditMode = Boolean(formData.id);
 
   if (!product.productName) {
     errors['products[0].productName'] = "Product name is required";
   } else if (product.productName.length < 2) {
     errors['products[0].productName'] = "Product name must be at least 2 characters";
   }
-  
-  // Validate quantity
+
   const quantityError = validateQuantity(product.quantity);
   if (quantityError) errors['products[0].quantity'] = quantityError;
 
-  // Validate brand
   if (!product.brand) {
     errors['products[0].brand'] = "Brand is required";
   } else if (product.brand.length < 2) {
     errors['products[0].brand'] = "Brand must be at least 2 characters";
   }
-  
-  // Validate model
+
   if (!product.model) {
     errors['products[0].model'] = "Model is required";
   } else if (product.model.length < 2) {
     errors['products[0].model'] = "Model must be at least 2 characters";
   }
-  
-  // Validate warranty date
+
+  // Conditionally validate warrantyDate:
   if (!product.warrantyDate) {
     errors['products[0].warrantyDate'] = "Warranty date is required";
-  } else if (new Date(product.warrantyDate) < new Date()) {
+  } else if (!isEditMode && new Date(product.warrantyDate) < new Date()) {
+    // For add mode, warrantyDate must be in the future
     errors['products[0].warrantyDate'] = "Warranty date should be in the future";
   }
-  
-  // Validate guarantee date
+
+  // Conditionally validate guaranteeDate:
   if (!product.guaranteeDate) {
     errors['products[0].guaranteeDate'] = "Guarantee date is required";
-  } else if (new Date(product.guaranteeDate) < new Date()) {
+  } else if (!isEditMode && new Date(product.guaranteeDate) < new Date()) {
+    // For add mode, guaranteeDate must be in the future
     errors['products[0].guaranteeDate'] = "Guarantee date should be in the future";
   }
-  
-  // Validate guarantee date is after warranty date
+
+  // Validate guaranteeDate > warrantyDate regardless of mode
   if (product.warrantyDate && product.guaranteeDate) {
     if (new Date(product.guaranteeDate) <= new Date(product.warrantyDate)) {
       errors['products[0].guaranteeDate'] = "Guarantee date must be after warranty date";
     }
   }
-  
+
   return errors;
 };

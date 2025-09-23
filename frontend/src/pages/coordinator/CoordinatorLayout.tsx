@@ -43,6 +43,9 @@ const CoordinatorLayout = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
+  
+  // Add state for sidebar toggle
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Single source of truth for unread count
   const [unreadCount, setUnreadCount] = useState(() => {
@@ -81,7 +84,7 @@ const CoordinatorLayout = () => {
               })
               .map((n: Notification) => ({
                 ...n,
-                title: 'New Message' // Normalize title
+                title: 'New Message'
               }));
 
             if (newNotifications.length === 0) return prev;
@@ -124,7 +127,6 @@ const CoordinatorLayout = () => {
 
   const handleMarkAsRead = async (notificationId: string, conversationId?: string) => {
     try {
-      // Optimistic UI update
       setNotifications(prev =>
         prev.map(n => n._id === notificationId ? { ...n, read: true } : n)
       );
@@ -139,7 +141,6 @@ const CoordinatorLayout = () => {
         : await NotificationService.markNotificationAsRead(notificationId);
 
       if (!response.success) {
-        // Rollback if API fails
         setNotifications(prev =>
           prev.map(n => n._id === notificationId ? { ...n, read: false } : n)
         );
@@ -147,7 +148,6 @@ const CoordinatorLayout = () => {
       }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
-      // Rollback on error
       setNotifications(prev =>
         prev.map(n => n._id === notificationId ? { ...n, read: false } : n)
       );
@@ -158,14 +158,12 @@ const CoordinatorLayout = () => {
   const handleMarkAllAsRead = async () => {
     if (!userId) return;
     try {
-      // Optimistic UI update
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
       localStorage.setItem('coordinatorUnreadChat', '0');
 
       const response = await markAllChatNotificationsRead(userId);
       if (!response.success) {
-        // Rollback if API fails
         setNotifications(prev => prev.map(n => ({ ...n, read: false })));
         setUnreadCount(prev => {
           const newCount = prev + notifications.filter(n => !n.read).length;
@@ -174,7 +172,6 @@ const CoordinatorLayout = () => {
       }
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
-      // Rollback on error
       setNotifications(prev => prev.map(n => ({ ...n, read: false })));
       setUnreadCount(prev => {
         const newCount = prev + notifications.filter(n => !n.read).length;
@@ -388,7 +385,81 @@ const CoordinatorLayout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Responsive Sidebar */}
+      <div
+        className={`fixed top-0 left-0 h-screen w-64 bg-indigo-900 text-white shadow-lg z-50
+        transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        transition-transform duration-300 ease-in-out lg:translate-x-0`}
+      >
+        <Sidebar
+          activeTab={getActiveTab()}
+          handleLogout={openLogoutConfirm}
+          unreadCount={unreadCount}
+          socket={socket}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+      </div>
+
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-40 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        <div className="lg:ml-64">
+          <div className="p-4 lg:p-8">
+            <Header
+              userName={userName}
+              userRole={userRole}
+              checkedIn={checkedIn}
+              setCheckedIn={setCheckedIn}
+              notifications={unreadCount}
+              onNotificationClick={() => {
+                setIsModalOpen(true);
+                fetchNotifications();
+              }}
+              socket={socket}
+            />
+            <Outlet context={{ socket }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation */}
+      <MobileNav 
+        activeTab={getActiveTab()} 
+        setActiveTab={() => {}}
+        unreadCount={unreadCount}
+      />
+
+      {/* Notification Modal */}
+      <NotificationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+      />
+
+      {/* Logout Confirmation */}
+      <ConfirmationDialog
+        isOpen={showLogoutConfirm}
+        onClose={closeLogoutConfirm}
+        onConfirm={handleLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout from your account? You will be redirected to the login page."
+        type="danger"
+        confirmText="Yes, Logout"
+        cancelText="Stay Logged In"
+        showCloseButton={true}
+      />
+
+      {/* Toast Container */}
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -400,53 +471,6 @@ const CoordinatorLayout = () => {
         draggable
         pauseOnHover
         limit={3}
-      />
-
-      <Sidebar
-        activeTab={getActiveTab()}
-        handleLogout={openLogoutConfirm}
-        unreadCount={unreadCount}
-        socket={socket}
-      />
-
-      <div className="transition-all duration-300 ml-0 lg:ml-64">
-        <div className="p-4 lg:p-8">
-          <Header
-            userName={userName}
-            userRole={userRole}
-            checkedIn={checkedIn}
-            setCheckedIn={setCheckedIn}
-            notifications={unreadCount}
-            onNotificationClick={() => {
-              setIsModalOpen(true);
-              fetchNotifications();
-            }}
-            socket={socket}
-          />
-          <Outlet context={{ socket }} />
-        </div>
-      </div>
-
-      <MobileNav activeTab={getActiveTab()} setActiveTab={() => { }} />
-
-      <NotificationModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
-      />
-
-      <ConfirmationDialog
-        isOpen={showLogoutConfirm}
-        onClose={closeLogoutConfirm}
-        onConfirm={handleLogout}
-        title="Confirm Logout"
-        message="Are you sure you want to logout from your account? You will be redirected to the login page."
-        type="danger"
-        confirmText="Yes, Logout"
-        cancelText="Stay Logged In"
-        showCloseButton={true}
       />
     </div>
   );

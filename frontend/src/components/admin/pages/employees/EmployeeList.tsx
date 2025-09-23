@@ -8,7 +8,6 @@ interface EmployeeListProps {
   isLoading: boolean;
   currentItems: EmployeeResponse[];
   onView: (employee: EmployeeFormData) => void;
-  onEdit: (employee: EmployeeFormData) => void;
   onDelete: (employee: EmployeeFormData) => void;
   onToggleStatus: (id: string, newStatus: 'active' | 'inactive') => void;
 }
@@ -17,11 +16,9 @@ const EmployeeList: React.FC<EmployeeListProps> = ({
   isLoading,
   currentItems,
   onView,
-  onEdit,
   onDelete,
   onToggleStatus
 }) => {
-  // Define table columns
   const employeeColumns: TableColumn[] = [
     {
       key: "employeeName",
@@ -84,7 +81,7 @@ const EmployeeList: React.FC<EmployeeListProps> = ({
           onToggleStatus(id, newStatus as "active" | "inactive")
         }
         onView={(employee) => onView(employee)}
-        onEdit={(employee) => onEdit(employee)}
+        // onEdit={(employee) => onEdit(employee)}
         onDelete={(employee) => onDelete(employee)}
         idKey="id"
         nameKey="employeeName"
