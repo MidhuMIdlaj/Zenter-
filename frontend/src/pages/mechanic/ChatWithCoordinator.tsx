@@ -183,7 +183,6 @@ useEffect(() => {
           })
       );
 
-      // Key sorting logic: latest at top
       coordinatorsWithMessages.sort((a, b) => {
         if (!a.sortableTime && !b.sortableTime) return 0;
         if (!a.sortableTime) return 1;

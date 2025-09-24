@@ -17,13 +17,14 @@ import { RootState } from '../../store/Store';
 import { useNavigate } from 'react-router-dom';
 import { setAdminAuth } from '../../store/AdminAuthSlice';
 
-
 interface ProfileData {
   firstName: string;
   lastName: string;
   phoneNumber: string;
   email: string;
 }
+
+const indianPhoneRegex = /^[6-9]\d{9}$/;
 
 const MatchUpProfilePage = () => {
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -36,10 +37,12 @@ const MatchUpProfilePage = () => {
   const [editData, setEditData] = useState<ProfileData>({ ...profileData });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<{ [key in keyof ProfileData]?: string }>({});
+
   const adminId = useSelector((state: RootState) => state.adminAuth?.adminData?.id);
   const navigate = useNavigate()
   const dispatch = useDispatch();
-  // Fetch profile data on mount
+
   useEffect(() => {
     if (!adminId) {
       setIsLoading(false);
@@ -51,19 +54,19 @@ const MatchUpProfilePage = () => {
         setIsLoading(true);
         const response = await AdminProfileService.getProfile(adminId);
         const data = response.admin || response.data?.admin || response;
+
         setProfileData({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        phoneNumber: data.phoneNumber || '',
-        email: data.email || ''
-       });
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          phoneNumber: data.phoneNumber || '',
+          email: data.email || ''
+        });
         setEditData({
-        firstName: data.firstName || '',
-        lastName: data.lastName || '',
-        phoneNumber: data.phoneNumber || '',
-        email: data.email || ''
-      });
-    
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          phoneNumber: data.phoneNumber || '',
+          email: data.email || ''
+        });
       } catch (error) {
         toast.error('Failed to load profile data');
         console.error(error);
@@ -75,22 +78,54 @@ const MatchUpProfilePage = () => {
     loadProfile();
   }, [adminId]);
 
+  // Validation on every change in editData
+  useEffect(() => {
+    const newErrors: { [key in keyof ProfileData]?: string } = {};
+
+    if (!editData.firstName.trim()) {
+      newErrors.firstName = 'First name is required.';
+    }
+
+    if (!editData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required.';
+    }
+
+    if (!editData.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Phone number is required.';
+    } else if (!indianPhoneRegex.test(editData.phoneNumber)) {
+      newErrors.phoneNumber = 'Phone number must be a valid 10-digit Indian number starting with 6-9.';
+    }
+
+    if (!editData.email.trim()) {
+      newErrors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editData.email.trim())) {
+      newErrors.email = 'Invalid email format.';
+    }
+
+    setErrors(newErrors);
+
+  }, [editData]);
+
   const handleEdit = () => {
     setIsEditing(true);
   };
 
   const handleSave = async () => {
+    if(Object.keys(errors).length > 0) {
+      toast.error("Please fix form errors before saving.");
+      return;
+    }
     try {
       setIsSaving(true);
       const updatedProfile = await AdminProfileService.updateProfile(
         adminId!,
         {
-          firstName: editData.firstName,
-          lastName: editData.lastName,
-          phoneNumber: editData.phoneNumber
+          firstName: editData.firstName.trim(),
+          lastName: editData.lastName.trim(),
+          phoneNumber: editData.phoneNumber.trim()
         }
       );
-      
+
       setProfileData(updatedProfile);
       setIsEditing(false);
       toast.success('Profile updated successfully');
@@ -103,10 +138,11 @@ const MatchUpProfilePage = () => {
 
   const handleCancel = () => {
     setEditData(profileData);
+    setErrors({});
     setIsEditing(false);
   };
 
- const handleInputChange = (field: keyof ProfileData, value: string) => {
+  const handleInputChange = (field: keyof ProfileData, value: string) => {
     setEditData(prev => ({ 
       ...prev, 
       [field]: value || '' 
@@ -158,7 +194,7 @@ const MatchUpProfilePage = () => {
                   <div className="flex space-x-2">
                     <button
                       onClick={handleSave}
-                      disabled={isSaving}
+                      disabled={isSaving || Object.keys(errors).length > 0}
                       className="p-3 bg-green-500/80 rounded-full text-white hover:bg-green-500 transition-all disabled:opacity-50"
                     >
                       {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
@@ -190,7 +226,6 @@ const MatchUpProfilePage = () => {
               <User className="mr-2 text-blue-500" size={20} />
               Profile Information
             </h3>
-            
             <div className="space-y-4">
               {/* Email (readonly) */}
               <div>
@@ -204,12 +239,15 @@ const MatchUpProfilePage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={editData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.firstName ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {errors.firstName && <p className="text-red-600 text-xs mt-1">{errors.firstName}</p>}
+                  </>
                 ) : (
                   <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                     <span className="text-gray-800 font-medium">
@@ -223,12 +261,15 @@ const MatchUpProfilePage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={editData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
+                  <>
+                    <input
+                      type="text"
+                      value={editData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.lastName ? 'border-red-500' : 'border-gray-300'}`}
+                    />
+                    {errors.lastName && <p className="text-red-600 text-xs mt-1">{errors.lastName}</p>}
+                  </>
                 ) : (
                   <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                     <span className="text-gray-800 font-medium">
@@ -242,12 +283,16 @@ const MatchUpProfilePage = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
                 {isEditing ? (
-                  <input
-                    type="tel"
-                    value={editData.phoneNumber}
-                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
+                  <>
+                    <input
+                      type="tel"
+                      value={editData.phoneNumber}
+                      onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${errors.phoneNumber ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="e.g. 9876543210"
+                    />
+                    {errors.phoneNumber && <p className="text-red-600 text-xs mt-1">{errors.phoneNumber}</p>}
+                  </>
                 ) : (
                   <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                     <span className="text-gray-800 font-medium">
@@ -267,10 +312,9 @@ const MatchUpProfilePage = () => {
             className="bg-white rounded-xl shadow-lg p-6"
           >
             <h3 className="text-lg font-semibold text-gray-800 mb-6">Quick Actions</h3>
-            
             <div className="space-y-4">
               <button
-                 onClick={()=> navigate('/admin/chat')}
+                onClick={() => navigate('/admin/chat')}
                 disabled={isEditing}
                 className={`w-full flex items-center justify-center space-x-3 p-4 rounded-lg transition-all ${
                   isEditing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-blue-50 hover:bg-blue-100 text-blue-600 hover:shadow-md'
@@ -281,7 +325,7 @@ const MatchUpProfilePage = () => {
               </button>
 
               <button
-                 onClick={()=> navigate('/admin/video-call')}
+                onClick={() => navigate('/admin/video-call')}
                 disabled={isEditing}
                 className={`w-full flex items-center justify-center space-x-3 p-4 rounded-lg transition-all ${
                   isEditing ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-green-50 hover:bg-green-100 text-green-600 hover:shadow-md'

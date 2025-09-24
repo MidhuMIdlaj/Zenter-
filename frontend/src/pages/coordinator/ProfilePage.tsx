@@ -1,4 +1,3 @@
-// src/pages/coordinator/CoordinatorProfile.tsx
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { PenTool as Tool, User, Mail, Calendar, Phone, MapPin, DollarSign, Briefcase, Clock } from 'lucide-react';
@@ -6,12 +5,13 @@ import { toast } from 'react-toastify';
 import { selectEmployeeAuthData } from '../../store/selectors';
 import { EmployeeAPI } from '../../api/employee/employee';
 
+const indianPhoneRegex = /^[6-9]\d{9}$/;
+
 const CoordinatorProfile = () => {
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Editable fields state
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
     employeeName: '',
@@ -20,20 +20,21 @@ const CoordinatorProfile = () => {
     age: ''
   });
 
-  // Fetch profile data
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Load profile
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!employeeData?.id) return;
-
       try {
         setLoading(true);
         const data = await EmployeeAPI.getEmployeeProfile(employeeData.id);
         setProfileData(data);
         setFormData({
-          employeeName: data.employeeName,
-          contactNumber: data.contactNumber,
-          address: data.address,
-          age: data.age
+          employeeName: data.employeeName || '',
+          contactNumber: data.contactNumber || '',
+          address: data.address || '',
+          age: data.age !== undefined && data.age !== null ? data.age.toString() : ''
         });
       } catch (error) {
         toast.error('Failed to load profile data');
@@ -41,41 +42,73 @@ const CoordinatorProfile = () => {
         setLoading(false);
       }
     };
-
     fetchProfileData();
   }, [employeeData?.id]);
 
+  // Validation
+  useEffect(() => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formData.employeeName?.trim()) {
+      newErrors.employeeName = 'Name is required';
+    }
+
+    if (!formData.contactNumber?.trim()) {
+      newErrors.contactNumber = 'Contact number is required';
+    } else if (!indianPhoneRegex.test(formData.contactNumber.trim())) {
+      newErrors.contactNumber = 'Invalid Indian phone number; must be 10 digits starting with 6-9';
+    }
+
+    if (!formData.address?.trim()) {
+      newErrors.address = 'Address is required';
+    }
+
+    const ageValue = formData.age ?? '';
+    if (ageValue.trim() === '') {
+      newErrors.age = 'Age is required';
+    } else if (isNaN(Number(ageValue)) || Number(ageValue) < 18) {
+      newErrors.age = 'Enter a valid age (18 or older)';
+    }
+
+    setErrors(newErrors);
+  }, [formData]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (Object.keys(errors).length > 0) {
+      toast.error('Please fix validation errors before saving.');
+      return;
+    }
     if (!employeeData?.id) return;
 
     try {
       const response = await EmployeeAPI.updateEmployeeProfile(
         employeeData.id,
         {
-          employeeName: formData.employeeName,
-          contactNumber: formData.contactNumber,
-          address: formData.address,
+          employeeName: formData.employeeName.trim(),
+          contactNumber: formData.contactNumber.trim(),
+          address: formData.address.trim(),
           age: Number(formData.age)
         }
       );
 
-      const updatedEmployee = response.data;
+      const updatedEmployee = response.data || response;
 
-      setProfileData(updatedEmployee);
+      setProfileData((prev:any) => ({
+        ...prev,
+        ...updatedEmployee,
+      }));
+
       setFormData({
-        employeeName: updatedEmployee.employeeName,
-        contactNumber: updatedEmployee.contactNumber,
-        address: updatedEmployee.address,
-        age: updatedEmployee.age
+        employeeName: updatedEmployee.employeeName ?? formData.employeeName,
+        contactNumber: updatedEmployee.contactNumber ?? formData.contactNumber,
+        address: updatedEmployee.address ?? formData.address,
+        age: updatedEmployee.age !== undefined && updatedEmployee.age !== null ? updatedEmployee.age.toString() : formData.age,
       });
 
       toast.success('Profile updated successfully');
@@ -133,9 +166,10 @@ const CoordinatorProfile = () => {
                     name="employeeName"
                     value={formData.employeeName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 ${errors.employeeName ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  {errors.employeeName && <p className="text-red-600 text-xs mt-1">{errors.employeeName}</p>}
                 </div>
 
                 <div className="space-y-1">
@@ -145,9 +179,10 @@ const CoordinatorProfile = () => {
                     name="contactNumber"
                     value={formData.contactNumber}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 ${errors.contactNumber ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  {errors.contactNumber && <p className="text-red-600 text-xs mt-1">{errors.contactNumber}</p>}
                 </div>
 
                 <div className="space-y-1">
@@ -157,9 +192,10 @@ const CoordinatorProfile = () => {
                     name="address"
                     value={formData.address}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 ${errors.address ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  {errors.address && <p className="text-red-600 text-xs mt-1">{errors.address}</p>}
                 </div>
 
                 <div className="space-y-1">
@@ -169,9 +205,10 @@ const CoordinatorProfile = () => {
                     name="age"
                     value={formData.age}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 focus:border-indigo-500 ${errors.age ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  {errors.age && <p className="text-red-600 text-xs mt-1">{errors.age}</p>}
                 </div>
               </div>
 
@@ -238,9 +275,7 @@ const CoordinatorProfile = () => {
                   <Calendar size={20} className="text-indigo-600 mt-1" />
                   <div>
                     <p className="text-sm text-gray-500">Join Date</p>
-                    <p className="text-gray-800">
-                      {new Date(profileData.joinDate).toLocaleDateString()}
-                    </p>
+                    <p className="text-gray-800">{new Date(profileData.joinDate).toLocaleDateString()}</p>
                   </div>
                 </div>
 
