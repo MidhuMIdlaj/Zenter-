@@ -128,7 +128,6 @@ export default class ClientController {
     try {
       const { id } = req.params;
       const client = await this.findClientByIdUsecases.execute(id);
-
       if (!client) {
         res.status(StatusCode.NOT_FOUND).json({ message: "Client not found" });
         return;

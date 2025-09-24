@@ -1,4 +1,4 @@
-import { INotification } from "../../Repository/i-notification-repository";
+import { INotification } from "../../../infrastructure/db/models/notification.model";
 
 export interface IGetUnreadChatNotificationsResponse {
   success: boolean;

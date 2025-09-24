@@ -174,7 +174,6 @@ container.bind<IComplaintAttachmentRepository>(TYPES.IComplaintAttachMent).to(Co
 //Admin Use Cases(Cleint)
 container.bind<IGetCustomerEmails>(TYPES.getCustomerEmailsUsecases).to(GetCustomerEmails)
 // Chat Use Cases
-// common Use Cases(complaint)
 container.bind<IAcceptComplaintUseCase>(TYPES.acceptComplaintUseCase).to(AcceptComplaint)
 container.bind<AssignComplaintUseCase>(TYPES.assignComplaintUseCase).to(AssignComplaintUseCase)
 container.bind<IChangeStatusUseCase>(TYPES.changeStatusUseCase).to(ChangeStatusUseCase)

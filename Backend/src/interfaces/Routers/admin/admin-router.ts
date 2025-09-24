@@ -9,8 +9,8 @@ const adminController = container.get<AdminController>(TYPES.AuthController)
 
 const router = express.Router();
 router.use(asyncHandler(verifyToken));
-router.get('/getAllAdmins',checkRole(['admin','coordinator']) , adminController.getAllAdmins);
-router.get('/profile',checkRole(['admin']), adminController.getProfile);
+router.get('/getAllAdmins', checkRole(['admin', 'coordinator']), adminController.getAllAdmins);
+router.get('/profile', checkRole(['admin']), adminController.getProfile);
 router.put('/updateProfile', checkRole(['admin']), adminController.updatedProfile);
 
 export default router;

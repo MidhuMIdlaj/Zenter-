@@ -75,7 +75,6 @@ export default class EmployeeController {
   };
 
  getAllEmployees: RequestHandler = async (req, res) => {
-  console.log("12331")
    try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -98,7 +97,10 @@ export default class EmployeeController {
 
   updateStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { employeeId } = req.params;
+       const employeeId = req.user?.userId;
+      if(!employeeId){
+        throw new Error("the emplyee is not found")
+      }
       const { status } = req.body;
       await this.editEmployeeUsecases.execute(employeeId, status);
       res.status(StatusCode.OK).json({ success: true, message: "Status updated" });
@@ -109,7 +111,11 @@ export default class EmployeeController {
 
 editEmployee = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = req.params.employeeId
+
+      if(!employeeId){
+        throw new Error("the emplyee is not found")
+      }
     const updatedData = req.body;
 
     const updatedEmployee = await this.editEmployeeUsecases.execute(employeeId, updatedData);
@@ -129,8 +135,10 @@ editEmployee = async (req: Request, res: Response, next: NextFunction) => {
   
   SoftDeleteUser = async(req : Request , res : Response, next: NextFunction) =>{
     try {
-      const { employeeId } = req.params;
-     
+      const employeeId = req.params.employeeId
+      if(!employeeId){
+        throw new Error("the emplyee is not found")
+      }
       const result = await this.SoftDeleteEmployeeUseCase.execute(employeeId);
       if (!result) {
         res.status(StatusCode.NOT_FOUND).json({ message: "User not found or already deleted" });
@@ -178,8 +186,7 @@ editEmployee = async (req: Request, res: Response, next: NextFunction) => {
 
  getEmployeeProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { employeeId } = req.params;
-      
+      const employeeId = req.user?.userId;
       if (!employeeId) {
          res.status(StatusCode.BAD_REQUEST).json({
           success: false,
@@ -215,7 +222,7 @@ editEmployee = async (req: Request, res: Response, next: NextFunction) => {
 
   updateEmployeeProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { employeeId } = req.params;
+       const employeeId = req.user?.userId;
       const { employeeName, contactNumber, address, age } = req.body;
       if (!employeeId) {
          res.status(StatusCode.BAD_REQUEST).json({
@@ -225,7 +232,6 @@ editEmployee = async (req: Request, res: Response, next: NextFunction) => {
         return
       }
 
-      // Validate input data
       if (!employeeName || !contactNumber || !address || !age) {
          res.status(StatusCode.BAD_REQUEST).json({
           success: false,
@@ -246,7 +252,6 @@ editEmployee = async (req: Request, res: Response, next: NextFunction) => {
         });
         return
       }
-
       res.status(StatusCode.OK).json({
         success: true,
         message: "Profile updated successfully",
