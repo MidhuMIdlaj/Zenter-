@@ -44,9 +44,10 @@ axiosInstance.interceptors.response.use(
         return axiosInstance(originalRequest);
       } catch (refreshError) {
         store.dispatch(clearAdminAuth());
+        store.dispatch(clearEmployeeAuth());
         localStorage.removeItem('employeeData');
         localStorage.removeItem('token');
-        window.location.href = '/admin/login';
+        window.location.href = '/admin-login';
         return Promise.reject(refreshError);
       }
     }
