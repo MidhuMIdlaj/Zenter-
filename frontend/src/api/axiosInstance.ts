@@ -47,7 +47,7 @@ axiosInstance.interceptors.response.use(
         store.dispatch(clearEmployeeAuth());
         localStorage.removeItem('employeeData');
         localStorage.removeItem('token');
-        window.location.href = '/admin-login';
+        window.location.href = '/employee-login';
         return Promise.reject(refreshError);
       }
     }

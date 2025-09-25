@@ -30,38 +30,65 @@ interface CustomerFormProps {
   initialData: FormData;
 }
 
+// Strict Email Regex (RFC-like, practical)
+const strictEmailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+// Strict International Phone Regex: starts with optional '+', allows digits, spaces, hyphens, parentheses, 6-20 characters
+const strictContactNumberRegex = /^(\+)?([0-9\s\-().]{6,20})$/;
+
 // Validation functions
 const validateStep1 = (data: FormData) => {
   const errors: Record<string, string> = {};
-  
-  if (!data.email) {
+
+  // Strict email validation
+  const email = data.email?.trim() || '';
+  if (!email) {
     errors.email = "Email is required";
-  } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-    errors.email = "Email is invalid";
+  } else if (!strictEmailRegex.test(email)) {
+    errors.email = "Email format is invalid";
   }
-  
-  if (!data.ClientName) {
-    errors.ClientName = "Client name is required";
-  }
-  
-  if (!data.attendedDate) {
-    errors.attendedDate = "Attended date is required";
-  }
-  
-  if (!data.contactNumber) {
-    errors.contactNumber = "Contact number is required";
-  }
-  
-  if (!data.address) {
-    errors.address = "Address is required";
-  }
-  
-  return errors;
+
+  // Strict contact number validation
+  const contactNumber = data.contactNumber?.trim() || '';
+
+if (!contactNumber) {
+  errors.contactNumber = "Contact number is required";
+}
+// Digits only (no letters/symbols)
+else if (!/^\d+$/.test(contactNumber)) {
+  errors.contactNumber = "Contact number must contain only digits.";
+}
+// Exactly 10 digits (Indian mobile rule)
+else if (!/^\d{10}$/.test(contactNumber)) {
+  errors.contactNumber = "Contact number must be exactly 10 digits.";
+}
+// Prevent all zeros
+else if (/^0{10}$/.test(contactNumber)) {
+  errors.contactNumber = "Contact number cannot be all zeros.";
+}
+// Must start with 6–9 (valid Indian mobile start digits)
+else if (!/^[6-9]\d{9}$/.test(contactNumber)) {
+  errors.contactNumber = "Contact number must start with 6, 7, 8, or 9.";
+}
+
+// Other field validations
+if (!data.ClientName?.trim()) {
+  errors.ClientName = "Client name is required";
+}
+
+if (!data.attendedDate) {
+  errors.attendedDate = "Attended date is required";
+}
+
+if (!data.address?.trim()) {
+  errors.address = "Address is required";
+}
+
+return errors;
+
 };
 
 const validateStep2 = (data: FormData) => {
   const errors: Record<string, string> = {};
-  
   data.products.forEach((product, index) => {
     if (!product.productName) {
       errors[`products[${index}].productName`] = "Product name is required";
@@ -82,7 +109,6 @@ const validateStep2 = (data: FormData) => {
       errors[`products[${index}].guaranteeDate`] = "Guarantee date is required";
     }
   });
-  
   return errors;
 };
 
@@ -111,7 +137,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     const allErrors = formStep === 1 
       ? validateStep1(formData)
       : validateStep2(formData);
-    
     return Object.fromEntries(
       Object.entries(allErrors).filter(([key]) => touched[key])
     );
@@ -119,11 +144,14 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
 
   const isCurrentStepValid = useMemo(() => {
     if (formStep === 1) {
+      // Apply regex check strictly here as well
+      const emailValid = strictEmailRegex.test((formData.email ?? '').trim());
+      const contactValid = strictContactNumberRegex.test((formData.contactNumber ?? '').trim());
       return (
-        formData.email &&
+        emailValid &&
+        contactValid &&
         formData.ClientName &&
         formData.attendedDate &&
-        formData.contactNumber &&
         formData.address
       );
     } else {
@@ -150,10 +178,21 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    const productFieldMatch = name.match(/products\[(\d+)\]\.(\w+)/);
-    
     setTouched(prev => ({ ...prev, [name]: true }));
 
+    // Restrict contact number input: only allowed characters
+    if (name === "contactNumber") {
+      const filteredValue = value.replace(/[^0-9+\s\-().]/g, "");
+      setFormData(prev => ({ ...prev, contactNumber: filteredValue }));
+      return;
+    }
+    // Trim email on input
+    if (name === "email") {
+      setFormData(prev => ({ ...prev, email: value.trim() }));
+      return;
+    }
+
+    const productFieldMatch = name.match(/products\[(\d+)\]\.(\w+)/);
     if (productFieldMatch) {
       const [_, indexStr, field] = productFieldMatch;
       const index = parseInt(indexStr);
@@ -180,9 +219,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     });
   };
 
-  // Separate function for step navigation
   const handleNextStep = () => {
-    // Mark all step 1 fields as touched
     const step1Fields = ['email', 'ClientName', 'attendedDate', 'contactNumber', 'address'];
     const newTouched = { ...touched };
     step1Fields.forEach(field => { 
@@ -196,9 +233,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     }
   };
 
-  // This function only handles final form submission
   const handleFinalSubmit = async () => {
-    // Mark all fields as touched when trying to submit
     const allFields = [
       'email', 'ClientName', 'attendedDate', 'contactNumber', 'address',
       ...formData.products.flatMap((_, i) => [
@@ -210,23 +245,19 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
         `products[${i}].guaranteeDate`
       ])
     ];
-    
     const newTouched = allFields.reduce((acc, field) => {
       acc[field] = true;
       return acc;
     }, {} as Record<string, boolean>);
-    
     setTouched(newTouched);
 
-    // Validate all steps
     const step1Errors = validateStep1(formData);
     const step2Errors = validateStep2(formData);
     const allErrors = { ...step1Errors, ...step2Errors };
-    
     if (Object.keys(allErrors).length > 0) {
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
       await onSubmit(formData);
@@ -321,6 +352,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         type="email"
                         id="email"
                         name="email"
+                        autoComplete="off"
                         value={formData.email}
                         onChange={handleInputChange}
                         className={`w-full px-4 py-3 border rounded-lg transition-colors ${
@@ -380,12 +412,15 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         type="tel"
                         id="contactNumber"
                         name="contactNumber"
+                        autoComplete="off"
                         value={formData.contactNumber}
                         onChange={handleInputChange}
+                        pattern="^(\+)?([0-9\s\-().]{6,20})$"
                         className={`w-full px-4 py-3 border rounded-lg transition-colors ${
                           visibleErrors.contactNumber ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
                         placeholder="+1 (555) 123-4567"
+                        maxLength={20}
                       />
                       {visibleErrors.contactNumber && (
                         <p className="mt-1 text-sm text-red-600">{visibleErrors.contactNumber}</p>

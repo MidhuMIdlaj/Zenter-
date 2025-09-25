@@ -30,6 +30,8 @@ export default function PasswordResetPage() {
     return () => clearTimeout(timer);
   }, [resendTime, canResend]);
 
+
+  
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -38,14 +40,14 @@ export default function PasswordResetPage() {
       setError('Please enter your email address');
       return;
     }
-
+    
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('Please enter a valid email address');
       return;
     }
-
+    
     setIsSubmitting(true);
-
+    
     try {
       const response = await ResetPasswordEmailApi(email);
       if (response.status === 200) {
@@ -63,16 +65,16 @@ export default function PasswordResetPage() {
       setIsSubmitting(false);
     }
   };
-
+  
   const handleResendOtp = async () => {
     if (!canResend) return;
-
+    
     setIsSubmitting(true);
     setError('');
-
+    
     try {
       const response = await ResetPasswordEmailApi(email);
-
+      
       if (response.status === 200) {
         toast.success('New OTP sent to your email!');
         setCanResend(false);
@@ -87,16 +89,16 @@ export default function PasswordResetPage() {
       setIsSubmitting(false);
     }
   };
-
+  
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
+    
     if (!otp.trim() || otp.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
       return;
     }
-
+    
     setIsSubmitting(true);
     try {
       const response = await VerifyOtpApi(email, otp);
@@ -113,43 +115,46 @@ export default function PasswordResetPage() {
       setIsSubmitting(false);
     }
   };
+  
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+const handlePasswordSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
 
-    if (!password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
+  if (!password || !confirmPassword) {
+    setError('Please fill in all fields');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setError('Passwords do not match');
+    return;
+  }
+
+  if (!passwordRegex.test(password)) {
+    setError('Password must be at least 8 characters and include uppercase, lowercase, number, and special character.');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    const response = await ResetPasswordApi(email, password);
+    if (response.status === 200) {
+      toast.success('Password reset successfully!');
+      navigate("/employee-login");
+    } else {
+      setError(response.data.message || 'Password reset failed');
     }
+  } catch (err: any) {
+    setError(err.response?.data?.message || 'Password reset failed');
+    console.error('Password reset error:', err);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await ResetPasswordApi(email, password);
-      if (response.status === 200) {
-        toast.success('Password reset successfully!');
-        navigate("/employee-login")
-      } else {
-        setError(response.data.message || 'Password reset failed');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Password reset failed');
-      console.error('Password reset error:', err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-4">

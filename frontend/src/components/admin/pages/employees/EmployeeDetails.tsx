@@ -164,13 +164,6 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({
 
       <div className="mt-6 flex justify-end gap-4">
         <button
-          onClick={onEdit}
-          className="px-4 py-2 flex items-center gap-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <Edit size={16} />
-          <span>Edit</span>
-        </button>
-        <button
           onClick={onClose}
           className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
         >
