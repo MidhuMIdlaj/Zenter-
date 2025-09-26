@@ -31,7 +31,7 @@ export default class EmployeeController {
         emailId: emailId,
         joinDate,
         contactNumber,
-        employeeAddress: address,
+        address, 
         currentSalary,
         age,
         position,
@@ -39,7 +39,7 @@ export default class EmployeeController {
         experience,
         fieldOfMechanic
       } = req.body;
-      
+
       const parsedJoinDate = new Date(joinDate);
       const parsedSalary = Number(currentSalary);
       const parsedAge = Number(age);
