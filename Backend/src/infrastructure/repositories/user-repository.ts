@@ -99,7 +99,7 @@ export default class UserRepoImpl implements IUserRepository {
   }
 
     async getClientById(id: string): Promise<Client | null> {
-    const clientDoc = await ClientModel.findOne({_id : id});
+    const clientDoc = await ClientModel.findOne({"products._id" : id});
     if (!clientDoc) return null;
     const products: Product[] = clientDoc.products.map((p: any) => ({
       id : p._id,
