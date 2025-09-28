@@ -4,7 +4,7 @@ export interface IGetAvailableMechanicUsecase {
   employeeName: string;
   emailId: string;
   contactNumber: string;
-  address: string;
+  address: string | null | undefined;
   currentSalary: number;
   age: number;
   password: string;

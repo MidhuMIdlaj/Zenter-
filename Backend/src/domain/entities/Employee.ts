@@ -5,7 +5,7 @@ export default class Employee {
       public employeeName: string,
       public emailId: string,
       public contactNumber: string,
-      public address: string,
+      public address: string | null | undefined,
       public currentSalary: number,
       public age: number,
       public password: string,

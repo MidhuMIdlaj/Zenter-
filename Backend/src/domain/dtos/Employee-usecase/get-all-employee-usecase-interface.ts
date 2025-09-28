@@ -4,7 +4,7 @@ export interface IGetAllEmployeesUseCase {
   emailId: string;
   joinDate: Date;
   contactNumber: string;
-  address: string;
+  address: string | null | undefined;
   currentSalary: number;
   age: number;
   position: "mechanic" | "coordinator";

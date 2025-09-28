@@ -13,7 +13,7 @@ export default interface IEmployeeRepository  {
     emailId: string,
     joinDate: string | Date,
     contactNumber: string,
-    address: string,
+    address: string | null | undefined,
     currentSalary: number,
     age: number,
     position: 'coordinator' | 'mechanic',
