@@ -3,6 +3,7 @@ import { User, Mail, Phone, Clock, Tag, CheckCircle, X, Image as ImageIcon, Cred
 import { motion } from 'framer-motion';
 import { ComplaintFormData, coordinator, Mechanic } from '../../../../types/complaint';
 import { StatusType } from '../../../../api/cplaint/complaint';
+import { EmployeeAPI } from '../../../../api/employee/employee';
 
 interface ComplaintDetailsProps {
   complaint: ComplaintFormData;
@@ -13,17 +14,18 @@ interface ComplaintDetailsProps {
 
 type PriorityType = 'low' | 'medium' | 'high';
 
+
+
+
+
 const ComplaintDetails: React.FC<ComplaintDetailsProps> = ({ complaint, mechanics, coordinator, onClose }) => {
-  
   const assignedMechanics = Array.isArray(complaint.assignedMechanicId)
     ? complaint.assignedMechanicId.map(assignment => {
-        const mechanic = mechanics.find(m => m.mechanicId === assignment.mechanicId);
+        const mechanic = mechanics.find(m => String(m.mechanicId) === String(assignment.mechanicId));
         return { ...assignment, mechanicDetails: mechanic };
       })
     : [];
-
-  const coordinatorName = coordinator.find(c => c.id === complaint.createdBy)?.name || 'Unknown';
-
+    
   const formatDate = (date?: string | Date) => {
     if (!date) return 'N/A';
     const parsedDate = typeof date === 'string' ? new Date(date) : date;
@@ -87,7 +89,7 @@ const ComplaintDetails: React.FC<ComplaintDetailsProps> = ({ complaint, mechanic
             </div>
             <div className="flex items-center">
               <Phone className="text-blue-500 mr-2" />
-              <p className="text-gray-900">{complaint.contactNumber}</p>
+              <p className="text-gray-900">{complaint.customerPhone}</p>
             </div>
           </div>
         </div>

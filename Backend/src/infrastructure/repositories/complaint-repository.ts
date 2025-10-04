@@ -147,6 +147,14 @@ export default class ComplaintRepoImpl implements IComplaintRepository {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new Error("Invalid complaint ID format");
     }
+    const findMechanicComplaint = await ComplaintModel.findOne({ _id: id });
+    if (!findMechanicComplaint) {
+      throw new Error("Complaint not found");
+    }
+
+    const employeeId = findMechanicComplaint.assignedMechanics[0]?.mechanicId;
+
+    await EmployeeModel.updateOne({_id : employeeId} , {$set :{workingStatus : 'Available'}})
 
     const result = await ComplaintModel.updateOne(
       { _id: id },

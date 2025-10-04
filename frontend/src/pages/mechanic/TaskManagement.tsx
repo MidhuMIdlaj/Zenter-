@@ -485,20 +485,7 @@ const handleTaskCompletion = async (completionData: { description: string; photo
         )}
 
         {task.workingStatus === 'accept' && (
-          <div className="flex space-x-3">
-            <button
-              onClick={() => handleTaskAction(task.id, 'processing')}
-              disabled={actionLoading === task.id}
-              className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading === task.id ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              ) : (
-                <PlayCircle size={18} />
-              )}
-              <span>Start Work</span>
-            </button>
-            
+          <div className="flex space-x-3">    
             <button
               onClick={() => handleTaskAction(task.id, 'completed')}
               disabled={actionLoading === task.id}
@@ -516,19 +503,6 @@ const handleTaskCompletion = async (completionData: { description: string; photo
 
         {task.workingStatus === 'processing' && (
           <div className="flex space-x-3">
-            <button
-              onClick={() => handleTaskAction(task.id, 'accept')}
-              disabled={actionLoading === task.id}
-              className="flex-1 bg-yellow-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-yellow-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading === task.id ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              ) : (
-                <PauseCircle size={18} />
-              )}
-              <span>Pause Work</span>
-            </button>
-            
             <button
               onClick={() => handleTaskAction(task.id, 'completed')}
               disabled={actionLoading === task.id}

@@ -192,6 +192,67 @@ export class ComplaintReassignmentScheduler {
         await this.scheduleReassignment(complaintId, excludeMechanicId, "in 1 hour");
       }
     });
+
+    // Job for handling complaints with unavailable mechanics
+   this.agenda.define("assignWhenMechanicAvailable", { concurrency: 3 }, async (job: Job) => {
+   const { complaintId } = job.attrs.data;
+
+   try {
+    const complaint = await this.getComplaintByIdUsecase.execute(complaintId);
+
+    if (!complaint) {
+      console.log(`⚠️ Complaint ${complaintId} not found`);
+      return;
+    }
+
+    if (complaint.workingStatus !== "pending" || (complaint.assignedMechanicId?.length > 0)) {
+      console.log(`⚠️ Complaint ${complaintId} already has assigned mechanic or not pending`);
+      return;
+    }
+
+    const newMechanic = await this.FindBestMechanicUseCase.execute(
+      complaint.productName || "",
+      complaint.priority || "medium"
+    );
+
+    if (!newMechanic) {
+      console.log(`⚠️ No mechanic found for complaint ${complaintId}. Retrying in 24h`);
+      await this.scheduleUnavailableMechanicCheck(complaintId, "in 24 hours");
+      return;
+    }
+
+    const newAssignment = {
+      mechanicId: newMechanic.id,
+      assignedAt: new Date(),
+      status: "pending",
+      assignedBy: complaint.createdBy,
+    };
+
+    const updateResult = await ComplaintModel.findByIdAndUpdate(
+      complaintId,
+      {
+        $push: { assignedMechanics: newAssignment },
+        $set: {
+          workingStatus: "pending",
+          "status.status": "pending",
+          "status.updatedAt": new Date(),
+          "status.updatedBy": complaint.createdBy,
+        },
+      },
+      { new: true }
+    );
+
+    if (!updateResult) {
+      throw new Error(`Failed to assign mechanic for complaint ${complaintId}`);
+    }
+
+     console.log(`✅ Assigned mechanic ${newMechanic.employeeName} to complaint ${complaintId}`);
+   } catch (err) {
+     console.error(`❌ Error in assignWhenMechanicAvailable for complaint ${complaintId}:`, err);
+     await this.scheduleUnavailableMechanicCheck(complaintId, "in 24 hours");
+   }
+ });
+
   }
 
   public async start(): Promise<void> {
@@ -203,7 +264,7 @@ export class ComplaintReassignmentScheduler {
   public async scheduleReassignment(
     complaintId: string,
     excludeMechanicId: string,
-    delay: string = "in 1 minute"
+    delay: string = "in 2 hours"
   ): Promise<Job> {
     if (!this.isReady) {
       throw new Error('Agenda not initialized - call start() first');
@@ -226,6 +287,20 @@ export class ComplaintReassignmentScheduler {
       throw err;
     }
   }
+
+  public async scheduleUnavailableMechanicCheck(
+  complaintId: string,
+  delay: string = "in 24 hours"
+): Promise<Job> {
+  console.log("Scheduling unavailable mechanic check for complaint:", complaintId, "after", delay);
+  if (!this.isReady) throw new Error("Agenda not initialized");
+
+  if (!delay.startsWith("in ")) delay = `in ${delay}`;
+
+  const job = await this.agenda.schedule(delay, "assignWhenMechanicAvailable", { complaintId });
+  return job;
+}
+
 
   public async gracefulShutdown(): Promise<void> {
     try {

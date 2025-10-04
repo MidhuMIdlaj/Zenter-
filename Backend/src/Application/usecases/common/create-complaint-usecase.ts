@@ -9,16 +9,19 @@ import { INotificationRepository } from "../../../domain/Repository/i-notificati
 import { IComplaintRepoReturn } from "../../../domain/dtos/complaint-usecase/create-complaint-usecase-interface";
 import { Product } from "../../../domain/entities/User";
 import { ICreateComplaintUseCase } from "../../interface/common/create-complaint-usecase-interface";
+import { ComplaintReassignmentScheduler } from "../../../infrastructure/Services/scheduler-service";
 
 
 @injectable()
 export class CreateComplaintUseCase implements ICreateComplaintUseCase {
   constructor(
-      @inject(TYPES.IComplaintRepository) private complaintRepository : IComplaintRepository,
-      @inject(TYPES.IEmployeeRepository) private employeeRepository : IEmployeeRepository,
-      @inject(TYPES.IUserRepository) private userRepository : IUserRepository,
-      @inject(TYPES.INotificationRepository) private notificationRepository : INotificationRepository
-  ){}
+    @inject(TYPES.IComplaintRepository) private complaintRepository: IComplaintRepository,
+    @inject(TYPES.IEmployeeRepository) private employeeRepository: IEmployeeRepository,
+    @inject(TYPES.IUserRepository) private userRepository: IUserRepository,
+    @inject(TYPES.INotificationRepository) private notificationRepository: INotificationRepository,
+    @inject(TYPES.ComplaintReassignmentScheduler) private complaintReassign: ComplaintReassignmentScheduler,
+
+  ) { }
   async execute(data: {
     customerName?: string;
     customerEmail?: string;
@@ -39,10 +42,11 @@ export class CreateComplaintUseCase implements ICreateComplaintUseCase {
         if (!clientDetails) {
           return { success: false, error: 'Client with this product not found' };
         }
+        console.log(clientDetails, "clientDetails")
         productDetails = clientDetails.products.find(
-          (product :Product) => product?.id?.toString() === data.selectedProductId
+          (product: Product) => product?.id?.toString() === data.selectedProductId
         );
-
+        console.log(productDetails, "productDetails")
         if (!productDetails) {
           return { success: false, error: 'Selected product not found' };
         }
@@ -52,9 +56,10 @@ export class CreateComplaintUseCase implements ICreateComplaintUseCase {
       let assignedMechanic = null;
 
       if (!assignedMechanicId && productDetails) {
+        console.log(productDetails.productName, "productDetails.productName")
         assignedMechanic = await this.employeeRepository.findBestMechanic(
           productDetails.productName || '',
-          data.priority || 'medium'
+          data.priority || 'medium',
         );
 
         if (!assignedMechanic) {
@@ -99,16 +104,22 @@ export class CreateComplaintUseCase implements ICreateComplaintUseCase {
           savedComplaint,
           data.createdBy
         );
+      } else {
+        console.log(savedComplaint.id, "savedComplaint.id", savedComplaint)
+        await this.complaintReassign.scheduleUnavailableMechanicCheck(
+          savedComplaint.id.toString(),
+          "in 1 minute"
+        );
       }
       return { success: true, data: savedComplaint };
     } catch (error: unknown) {
-    console.error('Error creating complaint:', error);
+      console.error('Error creating complaint:', error);
 
-    if (error instanceof Error) {
-      return { success: false, error: error.message };
+      if (error instanceof Error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: false, error: 'Internal server error' };
     }
-
-    return { success: false, error: 'Internal server error' };
-   }
   }
 }

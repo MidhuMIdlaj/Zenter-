@@ -20,7 +20,7 @@ interface FormData {
   address: string;
   products: Product[];
   status: string;
-  lastLogin?: string; 
+  lastLogin?: string;
 }
 
 interface CustomerFormProps {
@@ -30,85 +30,152 @@ interface CustomerFormProps {
   initialData: FormData;
 }
 
-// Strict Email Regex (RFC-like, practical)
-const strictEmailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-// Strict International Phone Regex: starts with optional '+', allows digits, spaces, hyphens, parentheses, 6-20 characters
-const strictContactNumberRegex = /^(\+)?([0-9\s\-().]{6,20})$/;
+// Product types
+const PRODUCT_TYPES = ['Battery', 'Solar', 'Inverter'];
+
+// Reserved usernames
+const RESERVED_USERNAMES = ['admin', 'root', 'administrator', 'superuser', 'system', 'guest'];
+
+// Validation Regex Patterns
+const usernameRegex = /^[a-z0-9_]+$/;
+const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const contactNumberRegex = /^[6-9]\d{9}$/;
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 // Validation functions
+const validateUsername = (username: string): string | null => {
+  const trimmed = username.trim();
+  
+  if (!trimmed) return "Username is required";
+  if (trimmed.length < 3) return "Username must be at least 3 characters";
+  if (trimmed.length > 20) return "Username must not exceed 20 characters";
+  if (!usernameRegex.test(trimmed)) return "Username can only contain lowercase letters, numbers, and underscores";
+  if (trimmed.startsWith('_') || trimmed.endsWith('_')) return "Username cannot start or end with underscore";
+  if (RESERVED_USERNAMES.includes(trimmed.toLowerCase())) return "This username is reserved and cannot be used";
+  
+  return null;
+};
+
+const validateEmail = (email: string): string | null => {
+  const trimmed = email.trim().toLowerCase();
+  
+  if (!trimmed) return "Email is required";
+  if (trimmed.length > 150) return "Email must not exceed 150 characters";
+  if (!emailRegex.test(trimmed)) return "Email format is invalid (e.g., user@example.com)";
+  
+  return null;
+};
+
+const validateDate = (date: string, fieldName: string, disallowFuture: boolean = false, disallowToday: boolean = false): string | null => {
+  if (!date) return `${fieldName} is required`;
+  if (!dateRegex.test(date)) return `${fieldName} must be in YYYY-MM-DD format`;
+  
+  const inputDate = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (isNaN(inputDate.getTime())) return `${fieldName} is not a valid date`;
+  
+  if (disallowFuture && inputDate > today) {
+    return `${fieldName} cannot be a future date`;
+  }
+  
+  if (disallowToday && inputDate.getTime() === today.getTime()) {
+    return `${fieldName} cannot be today's date`;
+  }
+  
+  return null;
+};
+
+const validateContactNumber = (contact: string): string | null => {
+  const trimmed = contact.trim();
+  
+  if (!trimmed) return "Contact number is required";
+  if (!/^\d+$/.test(trimmed)) return "Contact number must contain only digits";
+  if (trimmed.length !== 10) return "Contact number must be exactly 10 digits";
+  if (/^0{10}$/.test(trimmed)) return "Contact number cannot be all zeros";
+  if (!contactNumberRegex.test(trimmed)) return "Contact number must start with 6, 7, 8, or 9";
+  
+  return null;
+};
+
+const validateAddress = (address: string): string | null => {
+  const trimmed = address.trim();
+  
+  if (!trimmed) return "Address is required";
+  if (trimmed.length < 10) return "Address must be at least 10 characters";
+  if (trimmed.length > 200) return "Address must not exceed 200 characters";
+  
+  return null;
+};
+
 const validateStep1 = (data: FormData) => {
   const errors: Record<string, string> = {};
 
-  // Strict email validation
-  const email = data.email?.trim() || '';
-  if (!email) {
-    errors.email = "Email is required";
-  } else if (!strictEmailRegex.test(email)) {
-    errors.email = "Email format is invalid";
-  }
+  const usernameError = validateUsername(data.ClientName);
+  if (usernameError) errors.ClientName = usernameError;
 
-  // Strict contact number validation
-  const contactNumber = data.contactNumber?.trim() || '';
+  const emailError = validateEmail(data.email);
+  if (emailError) errors.email = emailError;
 
-if (!contactNumber) {
-  errors.contactNumber = "Contact number is required";
-}
-// Digits only (no letters/symbols)
-else if (!/^\d+$/.test(contactNumber)) {
-  errors.contactNumber = "Contact number must contain only digits.";
-}
-// Exactly 10 digits (Indian mobile rule)
-else if (!/^\d{10}$/.test(contactNumber)) {
-  errors.contactNumber = "Contact number must be exactly 10 digits.";
-}
-// Prevent all zeros
-else if (/^0{10}$/.test(contactNumber)) {
-  errors.contactNumber = "Contact number cannot be all zeros.";
-}
-// Must start with 6–9 (valid Indian mobile start digits)
-else if (!/^[6-9]\d{9}$/.test(contactNumber)) {
-  errors.contactNumber = "Contact number must start with 6, 7, 8, or 9.";
-}
+  const dateError = validateDate(data.attendedDate, "Attended date", true);
+  if (dateError) errors.attendedDate = dateError;
 
-// Other field validations
-if (!data.ClientName?.trim()) {
-  errors.ClientName = "Client name is required";
-}
+  const contactError = validateContactNumber(data.contactNumber);
+  if (contactError) errors.contactNumber = contactError;
 
-if (!data.attendedDate) {
-  errors.attendedDate = "Attended date is required";
-}
+  const addressError = validateAddress(data.address);
+  if (addressError) errors.address = addressError;
 
-if (!data.address?.trim()) {
-  errors.address = "Address is required";
-}
-
-return errors;
-
+  return errors;
 };
 
 const validateStep2 = (data: FormData) => {
   const errors: Record<string, string> = {};
+  
   data.products.forEach((product, index) => {
-    if (!product.productName) {
-      errors[`products[${index}].productName`] = "Product name is required";
+    if (!product.productName?.trim()) {
+      errors[`products[${index}].productName`] = "Product type is required";
     }
+    
     if (!product.quantity) {
       errors[`products[${index}].quantity`] = "Quantity is required";
+    } else {
+      const qty = parseInt(product.quantity);
+      if (qty < 1) {
+        errors[`products[${index}].quantity`] = "Quantity must be at least 1";
+      } else if (qty > 10) {
+        errors[`products[${index}].quantity`] = "Quantity cannot exceed 10";
+      }
     }
-    if (!product.brand) {
+    
+    if (!product.brand?.trim()) {
       errors[`products[${index}].brand`] = "Brand is required";
+    } else if (product.brand.trim().length < 2) {
+      errors[`products[${index}].brand`] = "Brand must be at least 2 characters";
+    } else if (product.brand.trim().length > 30) {
+      errors[`products[${index}].brand`] = "Brand must not exceed 30 characters";
     }
-    if (!product.model) {
+    
+    if (!product.model?.trim()) {
       errors[`products[${index}].model`] = "Model is required";
+    } else if (product.model.trim().length < 2) {
+      errors[`products[${index}].model`] = "Model must be at least 2 characters";
+    } else if (product.model.trim().length > 30) {
+      errors[`products[${index}].model`] = "Model must not exceed 30 characters";
     }
-    if (!product.warrantyDate) {
-      errors[`products[${index}].warrantyDate`] = "Warranty date is required";
+    
+    const warrantyError = validateDate(product.warrantyDate, "Warranty date", false, false);
+    if (warrantyError) {
+      errors[`products[${index}].warrantyDate`] = warrantyError;
     }
-    if (!product.guaranteeDate) {
-      errors[`products[${index}].guaranteeDate`] = "Guarantee date is required";
+    
+    const guaranteeError = validateDate(product.guaranteeDate, "Guarantee date", false, false);
+    if (guaranteeError) {
+      errors[`products[${index}].guaranteeDate`] = guaranteeError;
     }
   });
+  
   return errors;
 };
 
@@ -144,25 +211,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
 
   const isCurrentStepValid = useMemo(() => {
     if (formStep === 1) {
-      // Apply regex check strictly here as well
-      const emailValid = strictEmailRegex.test((formData.email ?? '').trim());
-      const contactValid = strictContactNumberRegex.test((formData.contactNumber ?? '').trim());
-      return (
-        emailValid &&
-        contactValid &&
-        formData.ClientName &&
-        formData.attendedDate &&
-        formData.address
-      );
+      const errors = validateStep1(formData);
+      return Object.keys(errors).length === 0;
     } else {
-      return formData.products.every(product => 
-        product.productName &&
-        product.quantity &&
-        product.brand &&
-        product.model &&
-        product.warrantyDate &&
-        product.guaranteeDate
-      );
+      const errors = validateStep2(formData);
+      return Object.keys(errors).length === 0;
     }
   }, [formData, formStep]);
 
@@ -180,15 +233,20 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
     const { name, value } = e.target;
     setTouched(prev => ({ ...prev, [name]: true }));
 
-    // Restrict contact number input: only allowed characters
     if (name === "contactNumber") {
-      const filteredValue = value.replace(/[^0-9+\s\-().]/g, "");
+      const filteredValue = value.replace(/[^0-9]/g, "").slice(0, 10);
       setFormData(prev => ({ ...prev, contactNumber: filteredValue }));
       return;
     }
-    // Trim email on input
+
     if (name === "email") {
-      setFormData(prev => ({ ...prev, email: value.trim() }));
+      setFormData(prev => ({ ...prev, email: value.trim().toLowerCase() }));
+      return;
+    }
+
+    if (name === "ClientName") {
+      const filteredValue = value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+      setFormData(prev => ({ ...prev, ClientName: filteredValue }));
       return;
     }
 
@@ -206,6 +264,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   const handleProductChange = (index: number, field: keyof Product, value: string) => {
+    setTouched(prev => ({ ...prev, [`products[${index}].${field}`]: true }));
     setFormData(prev => {
       const updatedProducts = [...prev.products];
       updatedProducts[index] = {
@@ -292,6 +351,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
   };
 
   if (!isOpen) return null;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -315,7 +375,6 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
           </div>
 
           <div className="p-6">
-            {/* Step Progress Indicator */}
             <div className="flex items-center justify-center mb-8">
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -359,6 +418,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                           visibleErrors.email ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
                         placeholder="client@example.com"
+                        maxLength={150}
                       />
                       {visibleErrors.email && (
                         <p className="mt-1 text-sm text-red-600">{visibleErrors.email}</p>
@@ -378,7 +438,8 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         className={`w-full px-4 py-3 border rounded-lg transition-colors ${
                           visibleErrors.ClientName ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
-                        placeholder="John Doe"
+                        placeholder="john_doe"
+                        maxLength={20}
                       />
                       {visibleErrors.ClientName && (
                         <p className="mt-1 text-sm text-red-600">{visibleErrors.ClientName}</p>
@@ -395,6 +456,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         name="attendedDate"
                         value={formData.attendedDate}
                         onChange={handleInputChange}
+                        max={new Date().toISOString().split('T')[0]}
                         className={`w-full px-4 py-3 border rounded-lg transition-colors ${
                           visibleErrors.attendedDate ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
@@ -415,12 +477,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                         autoComplete="off"
                         value={formData.contactNumber}
                         onChange={handleInputChange}
-                        pattern="^(\+)?([0-9\s\-().]{6,20})$"
                         className={`w-full px-4 py-3 border rounded-lg transition-colors ${
                           visibleErrors.contactNumber ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
-                        placeholder="+1 (555) 123-4567"
-                        maxLength={20}
+                        placeholder="9876543210"
+                        maxLength={10}
                       />
                       {visibleErrors.contactNumber && (
                         <p className="mt-1 text-sm text-red-600">{visibleErrors.contactNumber}</p>
@@ -441,6 +502,7 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                           visibleErrors.address ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
                         }`}
                         placeholder="123 Main St, City, Country"
+                        maxLength={200}
                       />
                       {visibleErrors.address && (
                         <p className="mt-1 text-sm text-red-600">{visibleErrors.address}</p>
@@ -448,135 +510,142 @@ const CustomerForm: React.FC<CustomerFormProps> = ({
                     </div>
                   </div>
                 </motion.div>
-              ) :  (
-                  <motion.div
-                    key="step2"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="productName">
-                          Product Name
-                        </label>
-                        <input
-                          type="text"
-                          id="productName"
-                          name="products[0].productName"
-                          value={formData.products[0].productName}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].productName`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                          placeholder="Premium Software Package"
-                        />
-                        {visibleErrors[`products[0].productName`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].productName`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="quantity">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          id="quantity"
-                          name="products[0].quantity"
-                          value={formData.products[0].quantity}
-                          onChange={handleInputChange}
-                          min="1"
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].quantity`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                          placeholder="1"
-                        />
-                        {visibleErrors[`products[0].quantity`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].quantity`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="brand">
-                          Brand
-                        </label>
-                        <input
-                          type="text"
-                          id="brand"
-                          name="products[0].brand"
-                          value={formData.products[0].brand}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].brand`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                          placeholder="TechBrand"
-                        />
-                        {visibleErrors[`products[0].brand`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].brand`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="model">
-                          Model
-                        </label>
-                        <input
-                          type="text"
-                          id="model"
-                          name="products[0].model"
-                          value={formData.products[0].model}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].model`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                          placeholder="Pro Plus"
-                        />
-                        {visibleErrors[`products[0].model`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].model`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="warrantyDate">
-                          Warranty Date
-                        </label>
-                        <input
-                          type="date"
-                          id="warrantyDate"
-                          name="products[0].warrantyDate"
-                          value={formData.products[0].warrantyDate}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].warrantyDate`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                        />
-                        {visibleErrors[`products[0].warrantyDate`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].warrantyDate`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-gray-700 font-medium mb-2" htmlFor="guaranteeDate">
-                          Guarantee Date
-                        </label>
-                        <input
-                          type="date"
-                          id="guaranteeDate"
-                          name="products[0].guaranteeDate"
-                          value={formData.products[0].guaranteeDate}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-3 border rounded-lg transition-colors ${
-                            visibleErrors[`products[0].guaranteeDate`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
-                          }`}
-                        />
-                        {visibleErrors[`products[0].guaranteeDate`] && (
-                          <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].guaranteeDate`]}</p>
-                        )}
-                      </div>
+              ) : (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="productName">
+                        Product Name
+                      </label>
+                      <select
+                        id="productName"
+                        name="products[0].productName"
+                        value={formData.products[0].productName}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].productName`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                      >
+                        <option value="">Select Product Type</option>
+                        {PRODUCT_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                      {visibleErrors[`products[0].productName`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].productName`]}</p>
+                      )}
                     </div>
-                  </motion.div>
-                )}
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="quantity">
+                        Quantity
+                      </label>
+                      <input
+                        type="number"
+                        id="quantity"
+                        name="products[0].quantity"
+                        value={formData.products[0].quantity}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="10"
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].quantity`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                        placeholder="1-10"
+                      />
+                      {visibleErrors[`products[0].quantity`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].quantity`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="brand">
+                        Brand
+                      </label>
+                      <input
+                        type="text"
+                        id="brand"
+                        name="products[0].brand"
+                        value={formData.products[0].brand}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].brand`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                        placeholder="Brand Name"
+                        maxLength={30}
+                      />
+                      {visibleErrors[`products[0].brand`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].brand`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="model">
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        id="model"
+                        name="products[0].model"
+                        value={formData.products[0].model}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].model`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                        placeholder="Model Number"
+                        maxLength={30}
+                      />
+                      {visibleErrors[`products[0].model`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].model`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="warrantyDate">
+                        Warranty Date
+                      </label>
+                      <input
+                        type="date"
+                        id="warrantyDate"
+                        name="products[0].warrantyDate"
+                        value={formData.products[0].warrantyDate}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].warrantyDate`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                      />
+                      {visibleErrors[`products[0].warrantyDate`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].warrantyDate`]}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2" htmlFor="guaranteeDate">
+                        Guarantee Date
+                      </label>
+                      <input
+                        type="date"
+                        id="guaranteeDate"
+                        name="products[0].guaranteeDate"
+                        value={formData.products[0].guaranteeDate}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-3 border rounded-lg transition-colors ${
+                          visibleErrors[`products[0].guaranteeDate`] ? "border-red-500 bg-red-50" : "border-gray-300 focus:border-blue-500"
+                        }`}
+                      />
+                      {visibleErrors[`products[0].guaranteeDate`] && (
+                        <p className="mt-1 text-sm text-red-600">{visibleErrors[`products[0].guaranteeDate`]}</p>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
 
             <div className="mt-8 pt-5 border-t border-gray-200 flex justify-between items-center">

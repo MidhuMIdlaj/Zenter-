@@ -12,6 +12,7 @@ import { IEditEmployeeUsecase } from "../../domain/dtos/Employee-usecase/edit-em
 import { IFindAllCoordinatorAndMechanic } from "../../domain/dtos/Employee-usecase/find-all-coordinator-usecase";
 import { IGetEmployeeProfileUsecase } from "../../domain/dtos/Employee-usecase/get-employee-profile-usecase-interface";
 import { IGetAvailableMechanicUsecase } from "../../domain/dtos/complaint-usecase/get-available-mechanic-usecase-interface";
+import { ComplaintReassignmentScheduler } from "../Services/scheduler-service";
 
 const priorityMap: Record<string, number> = {
   high: 3,
@@ -24,7 +25,7 @@ const MAX_PENDING_COMPLAINTS = 5;
 @injectable()
 export default class EmployeeRepoImpl implements EmployeeRepository {
    constructor(
-     @inject(TYPES.EmailService) private EmailService : EmailService
+     @inject(TYPES.EmailService) private EmailService : EmailService,     
     ) {}
   async createEmployee(
     employeeName: string,
@@ -184,33 +185,33 @@ export default class EmployeeRepoImpl implements EmployeeRepository {
         return prioritizedBusyMechanic[0].mechanic;
       }
 
-      const allAvailableMechanics = await EmployeeModel.find({
-        position: 'mechanic',
-        isDeleted: false,
-        status: 'active',
-        workingStatus: 'Available'
-      });
+      // const allAvailableMechanics = await EmployeeModel.find({
+      //   position: 'mechanic',
+      //   isDeleted: false,
+      //   status: 'active',
+      //   workingStatus: 'Available'
+      // });
 
-      const allWithWorkload = await Promise.all(
-        allAvailableMechanics.map(async (mechanic) => {
-          const pendingComplaints = await ComplaintModel.countDocuments({
-            'assignedMechanics.mechanicId': mechanic._id,
-            'status.status': { $in: ['pending', 'in-progress'] }
-          });
-          return { mechanic, pendingComplaints };
-        })
-      );
+      // const allWithWorkload = await Promise.all(
+      //   allAvailableMechanics.map(async (mechanic) => {
+      //     const pendingComplaints = await ComplaintModel.countDocuments({
+      //       'assignedMechanics.mechanicId': mechanic._id,
+      //       'status.status': { $in: ['pending', 'in-progress'] }
+      //     });
+      //     return { mechanic, pendingComplaints };
+      //   })
+      // );
 
-      const eligibleFallback = allWithWorkload
-        .filter(m => m.pendingComplaints < MAX_PENDING_COMPLAINTS)
-        .sort((a, b) =>
-          a.pendingComplaints - b.pendingComplaints ||
-          ((b.mechanic.experience ?? 0) - (a.mechanic.experience ?? 0))
-        );
+      // const eligibleFallback = allWithWorkload
+      //   .filter(m => m.pendingComplaints < MAX_PENDING_COMPLAINTS)
+      //   .sort((a, b) =>
+      //     a.pendingComplaints - b.pendingComplaints ||
+      //     ((b.mechanic.experience ?? 0) - (a.mechanic.experience ?? 0))
+      //   );
 
-      if (eligibleFallback.length > 0) {
-        return eligibleFallback[0].mechanic;
-      }
+      // if (eligibleFallback.length > 0) {
+      //   return eligibleFallback[0].mechanic;
+      // }
 
       return null;
     } catch (error) {
@@ -396,7 +397,16 @@ private toDomainEntity(employee: any): Employee {
       }
     }
 
-    async softDeleteEmployee(EmployeeId : string):Promise<any>{
+    async softDeleteEmployee(EmployeeId : string):Promise<any>{ 
+        const ComplaintSafe = await ComplaintModel.findOne({
+          'assignedMechanics.mechanicId': EmployeeId,
+          workingStatus: 'progress'
+        })
+
+        if(ComplaintSafe){
+          throw new Error("Cannot delete employee assigned to active complaints");
+        }
+
         const client = await EmployeeModel.findByIdAndUpdate(
              EmployeeId,
             { isDeleted: true },
@@ -407,6 +417,15 @@ private toDomainEntity(employee: any): Employee {
   
     async updateEmployee(employeeId: string, updatedData: Partial<Employee>): Promise<IEditEmployeeUsecase | null> {
       const cleanId = employeeId.replace(/^:/, ''); 
+       const ComplaintSafe = await ComplaintModel.findOne({
+          'assignedMechanics.mechanicId': cleanId,
+          workingStatus: 'progress'
+        })
+
+        if(ComplaintSafe){
+          throw new Error("Cannot delete employee assigned to active complaints");
+        }
+
       return await EmployeeModel.findByIdAndUpdate(cleanId, updatedData, { new: true });
     }
    async findByEmail(emailId: string): Promise<Employee | null> {

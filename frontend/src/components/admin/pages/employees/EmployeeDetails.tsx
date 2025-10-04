@@ -90,7 +90,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({
               <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
               <div>
                 <div className="text-sm font-medium text-gray-500">Address</div>
-                <div className="text-gray-800">{employee.employeeAddress}</div>
+                <div className="text-gray-800">{employee.address}</div>
               </div>
             </div>
           </div>
@@ -123,7 +123,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({
               <div>
                 <div className="text-sm font-medium text-gray-500">Current Salary</div>
                 <div className="text-gray-800">
-                  ${Number(employee.currentSalary).toLocaleString()}
+                  ₹{Number(employee.currentSalary).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -156,6 +156,13 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({
                 }`}>
                   {employee.status === 'active' ? 'Active' : 'Inactive'}
                 </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Briefcase className="h-5 w-5 text-gray-400 flex-shrink-0" />
+              <div>
+                <div className="text-sm font-medium text-gray-500">Field Of Mechanic</div>
+                <div className="text-gray-800 capitalize">{employee.fieldOfMechanic}</div>
               </div>
             </div>
           </div>

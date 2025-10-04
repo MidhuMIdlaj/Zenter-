@@ -53,59 +53,98 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
     }
   }, [submitSuccess, resetForm]);
 
-  useEffect(() => {
-    const curErrors: { [key: string]: string } = {};
+ useEffect(() => {
+  const curErrors: { [key: string]: string } = {};
 
-    if (!formData.emailId)
-      curErrors.emailId = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailId))
-      curErrors.emailId = "Invalid email format.";
+  // Email
+  if (!formData.emailId) {
+    curErrors.emailId = "Email is required.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailId)) {
+    curErrors.emailId = "Invalid email format.";
+  } else if (!formData.emailId.includes("@") || !formData.emailId.includes(".")) {
+    curErrors.emailId = "Email must contain '@' and '.'.";
+  } else if (formData.emailId.length < 8 || formData.emailId.length > 30) {
+    curErrors.emailId = "Email length must be 8-30 characters.";
+  }
 
-    if (!formData.employeeName)
-      curErrors.employeeName = "Employee name is required.";
+  // Employee Name
+  if (!formData.employeeName) {
+    curErrors.employeeName = "Employee name is required.";
+  } else if (formData.employeeName.length < 5 || formData.employeeName.length > 30) {
+    curErrors.employeeName = "Name must be 5-30 characters.";
+  }
 
-    if (!formData.joinDate)
-      curErrors.joinDate = "Join date is required.";
-
-    if (!formData.contactNumber)
-      curErrors.contactNumber = "Contact number is required.";
-    else if (!indianNumberRegex.test(formData.contactNumber))
-      curErrors.contactNumber =
-        "Enter a valid 10 digit Indian mobile number starting with 6-9.";
-
-    if (!formData.position)
-      curErrors.position = "Position is required.";
-
-    if (!formData.address)
-      curErrors.address = "Address is required.";
-
-    if (!formData.currentSalary)
-      curErrors.currentSalary = "Current salary is required.";
-    else if (isNaN(Number(formData.currentSalary)) || Number(formData.currentSalary) <= 0)
-      curErrors.currentSalary = "Enter a valid salary.";
-
-    if (!formData.age)
-      curErrors.age = "Age is required.";
-    else if (isNaN(Number(formData.age)) || Number(formData.age) < 18)
-      curErrors.age = "Enter a valid age (minimum 18).";
-
-    if (isEditMode && !formData.status)
-      curErrors.status = "Status is required.";
-    
-    if (!formData.previousJob){
-      curErrors.previousJob = "Previous job is required.";
+  // Join Date
+  if (!formData.joinDate) {
+    curErrors.joinDate = "Join date is required.";
+  } else {
+    const selectedDate = new Date(formData.joinDate);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    if (selectedDate > today) {
+      curErrors.joinDate = "Join date cannot be in the future.";
     }
- 
-    if (!formData.experience){
-      curErrors.experience = "Experience is required.";
-    }
+  }
 
-    if (!formData.fieldOfMechanic || formData.fieldOfMechanic.length === 0){
-      curErrors.fieldOfMechanic = "Select at least one field of mechanic.";
-    }
+  // Contact Number
+  if (!formData.contactNumber) {
+    curErrors.contactNumber = "Contact number is required.";
+  } else if (!/^[6-9]\d{9}$/.test(formData.contactNumber)) {
+    curErrors.contactNumber = "Enter a valid 10 digit Indian mobile number starting with 6-9.";
+  }
 
-    setErrors(curErrors);
-  }, [formData, isEditMode]);
+  // Employee Address
+  if (!formData.address) {
+    curErrors.address = "Address is required.";
+  } else if (formData.address.length < 10 || formData.address.length > 150) {
+    curErrors.address = "Address must be 10-150 characters.";
+  }
+
+  // Current Salary
+  if (!formData.currentSalary) {
+    curErrors.currentSalary = "Current salary is required.";
+  } else if (isNaN(Number(formData.currentSalary)) || Number(formData.currentSalary) <= 0) {
+    curErrors.currentSalary = "Enter a valid numeric salary.";
+  }
+
+  // Age
+  if (!formData.age) {
+    curErrors.age = "Age is required.";
+  } else if (isNaN(Number(formData.age)) || Number(formData.age) < 19 || Number(formData.age) > 80) {
+    curErrors.age = "Enter a valid age (19–80).";
+  }
+
+  // Experience
+  if (formData.experience === undefined || formData.experience === null || formData.experience === "") {
+    curErrors.experience = "Experience is required.";
+  } else if (isNaN(Number(formData.experience))) {
+    curErrors.experience = "Experience must be numeric.";
+  }
+
+  // Previous Job
+  if (!formData.previousJob) {
+    curErrors.previousJob = "Previous job is required.";
+  }
+
+  // Position
+  if (!formData.position) {
+    curErrors.position = "Position is required.";
+  }
+
+  // Status (edit mode)
+  if (isEditMode && !formData.status) {
+    curErrors.status = "Status is required.";
+  }
+
+  // Field of Mechanic
+  if (!formData.fieldOfMechanic || formData.fieldOfMechanic.length === 0) {
+    curErrors.fieldOfMechanic = "Select at least one field of mechanic.";
+  }
+
+  setErrors(curErrors);
+}, [formData, isEditMode]);
+
+
    
   const isFormValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
 

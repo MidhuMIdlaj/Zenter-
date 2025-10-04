@@ -97,7 +97,7 @@ export default class EmployeeController {
 
   updateStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-       const employeeId = req.user?.userId;
+       const employeeId = req.params.employeeId;
       if(!employeeId){
         throw new Error("the emplyee is not found")
       }

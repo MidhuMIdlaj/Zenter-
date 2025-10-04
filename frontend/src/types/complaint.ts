@@ -44,7 +44,7 @@ export interface ComplaintFormData {
   complaintNumber?: string;
   customerName: string;
   customerEmail: string;
-  contactNumber: string;
+  customerPhone: string;
   description: string;
   assignedMechanicId?: MechanicAssignment[]; 
   createdBy: string;

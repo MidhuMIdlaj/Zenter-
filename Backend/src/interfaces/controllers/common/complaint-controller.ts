@@ -48,7 +48,6 @@ export default class ComplaintController {
 
   createClientComplaint = async (req: Request, res: Response) => {
     try {
-      console.log(req.body , "2134234")
       const result = await this.createComplaintUseCase.execute(req.body);
       if (result.success) {
         res.status(StatusCode.CREATED).json(result.data);

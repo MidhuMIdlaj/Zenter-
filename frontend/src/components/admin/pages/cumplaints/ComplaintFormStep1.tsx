@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Search, ChevronDown } from 'lucide-react';
 import { Mechanic } from '../../../../types/complaint';
 
+
+
 interface ComplaintFormStep1Props {
   formData: {
     customerEmail: string;
@@ -44,7 +46,9 @@ const ComplaintFormStep1: React.FC<ComplaintFormStep1Props> = ({
   const [showCustomerEmailDropdown, setShowCustomerEmailDropdown] = useState(false);
   const customerEmailInputRef = useRef<HTMLInputElement>(null);
   const customerEmailDropdownRef = useRef<HTMLDivElement>(null);
-
+  const [contactNumberError, setContactNumberError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  
 
   const filteredCustomerEmails = formData.customerEmail.trim() === '' 
     ? customerEmails 
@@ -83,6 +87,29 @@ const ComplaintFormStep1: React.FC<ComplaintFormStep1Props> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+useEffect(() => {
+  if (formData.contactNumber === "") {
+    setContactNumberError("Contact number is required.");
+  } else if (!/^\d{10}$/.test(formData.contactNumber)) {
+    setContactNumberError("Contact number must be exactly 10 digits and numeric.");
+  } else {
+    setContactNumberError("");
+  }
+}, [formData.contactNumber,]);
+useEffect(() => {
+  if (!formData.description || formData.description.trim() === "") {
+    setDescriptionError("Description is required.");
+  } else if (formData.description.length < 10) {
+    setDescriptionError("Description must be at least 10 characters.");
+  } else if (formData.description.length > 500) {
+    setDescriptionError("Description cannot exceed 500 characters.");
+  } else {
+    setDescriptionError("");
+  }
+}, [formData.description]);
+
+
 
   return (
     <form onSubmit={isEditMode ? handleSubmit : undefined}>
@@ -165,29 +192,35 @@ const ComplaintFormStep1: React.FC<ComplaintFormStep1Props> = ({
             value={formData.contactNumber}
             onChange={handleInputChange}
             required
+            maxLength={10}
             placeholder="Phone number"
             className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           />
+          {contactNumberError && (
+          <span className="text-xs text-red-600">{contactNumberError}</span>
+          )}
         </div>
       </div>
       
       {/* Complaint Description */}
-      <div className="mb-4">
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-          Complaint Description *
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          required
-          rows={4}
-          placeholder="Describe the complaint..."
-          className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-        ></textarea>
-      </div>
-      
+          <div className="mb-4">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            Complaint Description *
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            required
+            rows={4}
+            placeholder="Describe the complaint..."
+            className={`w-full p-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${descriptionError ? "border-red-400" : "border-gray-300"}`}
+          ></textarea>
+          {descriptionError && (
+            <span className="text-xs text-red-600">{descriptionError}</span>
+          )}
+        </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {isEditMode && (
           <div>
