@@ -58,7 +58,7 @@ export const getSocketInstance = (): Server => {
 export const setupSocket = (httpServer: HttpServer) => {
 
   const allowedOrigins = [
-  process.env.REACT_APP_FRONDEND_URL || 'https://szenster.store',
+  process.env.CLIENT_URL || 'https://szenster.store',
   'http://localhost:5000'
    ].filter(Boolean); 
 
