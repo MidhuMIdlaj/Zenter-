@@ -63,7 +63,6 @@ const generateComplaintReport = (data: InvoiceData) => {
       ['In Progress', data.complaintStats.inProgress.toString()],
       ['Resolved', data.complaintStats.resolved.toString()],
       ['Cancelled', data.complaintStats.cancelled.toString()],
-      ['Resolution Rate', `${Math.round((data.complaintStats.resolved / data.complaintStats.total) * 100)}%`]
     ],
     theme: 'grid',
     headStyles: {
