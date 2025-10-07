@@ -43,6 +43,13 @@ export default function AdminVideoCallPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Filter states
+  const [initiatorFilter, setInitiatorFilter] = useState('');
+  const [participantFilter, setParticipantFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -80,22 +87,51 @@ export default function AdminVideoCallPage() {
 
   const formatDuration = (durationInSeconds?: number) => {
     if (!durationInSeconds || durationInSeconds < 1) return '-';
-
     const hours = Math.floor(durationInSeconds / 3600);
     const minutes = Math.floor((durationInSeconds % 3600) / 60);
     const seconds = durationInSeconds % 60;
-
     const parts = [];
     if (hours) parts.push(`${hours} hour${hours !== 1 ? 's' : ''}`);
     if (minutes) parts.push(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
     if (seconds && hours === 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
-
     return parts.join(' ');
   };
 
-  // Avoid a layout jump when reaching the last page with empty rows.
+  // Filtering logic
+  const filteredHistory = history.filter(call => {
+    const initiatorMatch = initiatorFilter
+      ? (call.initiatorName || call.initiatorId)
+          .toLowerCase()
+          .includes(initiatorFilter.toLowerCase())
+      : true;
+    const participantMatch = participantFilter
+      ? call.participants?.some(
+          p => p.employeeName.toLowerCase().includes(participantFilter.toLowerCase())
+        )
+      : true;
+    const statusMatch = statusFilter
+      ? (call.status || '').toLowerCase() === statusFilter.toLowerCase()
+      : true;
+    const dateFromMatch = dateFrom
+      ? new Date(call.startedAt) >= new Date(dateFrom)
+      : true;
+    const dateToMatch = dateTo
+      ? new Date(call.startedAt) <= new Date(dateTo)
+      : true;
+    return initiatorMatch && participantMatch && statusMatch && dateFromMatch && dateToMatch;
+  });
+
   const emptyRows =
-    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - history.length) : 0;
+    page > 0 ? Math.max(0, (1 + page) * rowsPerPage - filteredHistory.length) : 0;
+
+  // Clear filters handler
+  const handleClearFilters = () => {
+    setInitiatorFilter('');
+    setParticipantFilter('');
+    setStatusFilter('');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   return (
     <div className="px-8 py-6">
@@ -125,13 +161,54 @@ export default function AdminVideoCallPage() {
       <div className="bg-white shadow-md rounded-xl p-6 border border-gray-200">
         <h2 className="text-lg font-medium text-gray-700 mb-4">Video Call History</h2>
 
+        {/* Filters */}
+        <Box className="mb-4 flex flex-wrap gap-4">
+          <input
+            type="text"
+            placeholder="Filter by initiator"
+            value={initiatorFilter}
+            onChange={(e) => setInitiatorFilter(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Filter by participant"
+            value={participantFilter}
+            onChange={(e) => setParticipantFilter(e.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Status</option>
+            <option value="Ended">Ended</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+          />
+          <button
+            onClick={handleClearFilters}
+            style={{ marginLeft: 8, padding: '6px 12px', background: '#e0e0e0', borderRadius: 4 }}
+          >
+            Clear Filters
+          </button>
+        </Box>
+
         {loading ? (
           <Typography variant="h6">Loading call history...</Typography>
         ) : error ? (
           <Typography variant="h6" color="error">
             {error}
           </Typography>
-        ) : history.length === 0 ? (
+        ) : filteredHistory.length === 0 ? (
           <Typography variant="body1" color="textSecondary">
             No call history available.
           </Typography>
@@ -151,7 +228,7 @@ export default function AdminVideoCallPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {history
+                  {filteredHistory
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((call) => (
                       <TableRow key={call._id}>
@@ -179,7 +256,7 @@ export default function AdminVideoCallPage() {
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
-              count={history.length}
+              count={filteredHistory.length}
               rowsPerPage={rowsPerPage}
               page={page}
               onPageChange={handleChangePage}
