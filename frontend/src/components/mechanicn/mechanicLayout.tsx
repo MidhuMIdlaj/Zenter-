@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import MechanicSidebar from '../../pages/mechanic/MechanicSidebar';
 import MechanicHeader from '../../pages/mechanic/MechanicHeader';
 import NotificationPanel, { Notification } from './NotificationPanel';
+import ConfirmationDialog from '../../components/reusableComponent/ConfirmationDialog';
 import { selectEmployeeAuthData } from '../../store/selectors';
+import { clearEmployeeAuth } from '../../store/EmployeeAuthSlice';
 import { io } from 'socket.io-client';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const MechanicLayout = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Add sidebar state for mobile
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false); // Add logout dialog state
   const { employeeData } = useSelector(selectEmployeeAuthData);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -22,7 +28,6 @@ const MechanicLayout = () => {
   const userId = employeeData?.id;
   const mechanicId = employeeData?.id || '';
   const mechanicName = `${employeeData?.employeeName || 'Unknown'} - ${employeeData?.position || 'Mechanic'}`;
-  const location = useLocation();
 
   const getActivePage = () => {
     const path = location.pathname;
@@ -57,7 +62,7 @@ const MechanicLayout = () => {
   useEffect(() => {
     if (!userId || !token) return;
 
-    const newSocket = io( import.meta.env.VITE_REACT_APP_BACKEND_URL ||'http://localhost:5000', {
+    const newSocket = io(import.meta.env.VITE_REACT_APP_BACKEND_URL || 'http://localhost:5000', {
       transports: ['websocket'],
       auth: { token },
       withCredentials: true,
@@ -196,6 +201,26 @@ const MechanicLayout = () => {
     fetchNotifications();
   }, [fetchNotifications]);
 
+  // Logout handlers following coordinator pattern
+  const handleLogout = async () => {
+    try {
+      await dispatch(clearEmployeeAuth());
+      navigate('/employee-login', { replace: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setShowLogoutConfirm(false);
+    }
+  };
+
+  const openLogoutConfirm = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const closeLogoutConfirm = () => {
+    setShowLogoutConfirm(false);
+  };
+
   if (!mechanicId) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -219,6 +244,7 @@ const MechanicLayout = () => {
           activePage={getActivePage()} 
           unreadCount={globalUnreadCount}
           onClose={() => setIsSidebarOpen(false)}
+          onLogoutClick={openLogoutConfirm}
         />
       </div>
 
@@ -301,6 +327,20 @@ const MechanicLayout = () => {
           </div>
         </div>
       )}
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showLogoutConfirm}
+        onClose={closeLogoutConfirm}
+        onConfirm={handleLogout}
+        title="Confirm Logout"
+        message="Are you sure you want to logout from your account? You will be redirected to the login page."
+        type="danger"
+        confirmText="Yes, Logout"
+        cancelText="Stay Logged In"
+        showCloseButton={true}
+      />
+
       <ToastContainer limit={1} />
     </div>
   );

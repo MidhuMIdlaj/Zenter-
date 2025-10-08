@@ -19,7 +19,7 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import ChatRouter from './interfaces/Routers/common/chat-router';
 import VideoCallRouter from './interfaces/Routers/common/video-call-router';
-import VideoCallHistoryController  from './interfaces/Routers/common/videocall-history-router';
+import VideoCallHistoryController from './interfaces/Routers/common/videocall-history-router';
 import ChatMessage from './infrastructure/db/models/chat.model';
 import jwt from 'jsonwebtoken';
 import path from 'path';
@@ -58,9 +58,9 @@ export const getSocketInstance = (): Server => {
 export const setupSocket = (httpServer: HttpServer) => {
 
   const allowedOrigins = [
-  process.env.CLIENT_URL || 'https://szenster.store',
-  'http://localhost:5000'
-   ].filter(Boolean); 
+    process.env.CLIENT_URL || 'https://szenster.store',
+    'http://localhost:5000'
+  ].filter(Boolean);
 
   const io = new Server(httpServer, {
     cors: {
@@ -93,11 +93,11 @@ export const setupSocket = (httpServer: HttpServer) => {
       socket.data.userId = userId;
       next();
     } catch (err: unknown) {
-    if (err instanceof Error) {
-      next(new Error('Invalid token: ' + err.message));
-    } else {
-      next(new Error('Invalid token'));
-    }
+      if (err instanceof Error) {
+        next(new Error('Invalid token: ' + err.message));
+      } else {
+        next(new Error('Invalid token'));
+      }
     }
   });
 
@@ -123,7 +123,7 @@ export const setupSocket = (httpServer: HttpServer) => {
         socket.emit('message_delivered', { messageId: message._id });
 
         const recipientSockets = await io.in(`user_${message.receiverId}`).fetchSockets();
-        const isRecipientActive = recipientSockets.some(s => 
+        const isRecipientActive = recipientSockets.some(s =>
           s.data.currentConversationId === message.conversationId
         );
 
@@ -147,7 +147,7 @@ export const setupSocket = (httpServer: HttpServer) => {
             message.receiverRole
           );
         }
-      }catch (err: unknown) {
+      } catch (err: unknown) {
         let message = 'Unknown error';
         if (err instanceof Error) {
           message = err.message;
@@ -175,7 +175,7 @@ export const setupSocket = (httpServer: HttpServer) => {
           callback?.({ success: false, error: 'Unauthorized' });
           return;
         }
-        
+
         await ChatMessage.updateMany(
           { conversationId, receiverId: userId, isRead: false },
           { isRead: true }
@@ -184,9 +184,9 @@ export const setupSocket = (httpServer: HttpServer) => {
         callback?.({ success: true });
       } catch (err: unknown) {
         console.error('[app.ts] Error marking messages as read:', err);
-        callback?.({ 
-          success: false, 
-          error: err instanceof Error ? err.message : 'An unknown error occurred' 
+        callback?.({
+          success: false,
+          error: err instanceof Error ? err.message : 'An unknown error occurred'
         });
       }
     });

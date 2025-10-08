@@ -11,15 +11,19 @@ import { NotificationService } from '../../api/NotificationService/NotificationS
 interface MechanicSidebarProps {
   activePage: string;
   unreadCount: number; 
-  onClose?: () => void; // Add onClose prop for mobile
+  onClose?: () => void;
+  onLogoutClick: () => void; // Add this prop
 }
 
-const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }) => {
+const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ 
+  activePage, 
+  onClose,
+  onLogoutClick // Receive the handler from parent
+}) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const { employeeData } = useSelector(selectEmployeeAuthData);
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
   
@@ -32,7 +36,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
     const toast = document.createElement('div');
     toast.className = 'fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm transform transition-all duration-300 translate-x-full';
     
-    // Customize toast for video call notifications
     let content = '';
     if (notification.type === 'video_call') {
       content = `
@@ -83,12 +86,11 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
     toast.innerHTML = content;
     document.body.appendChild(toast);
 
-    // Handle click on the link
     const link = toast.querySelector('a');
     if (link) {
       link.addEventListener('click', (e) => {
         e.preventDefault();
-        navigate(notification.callLink.replace('http://localhost:5173', '')); // Navigate with react-router-dom
+        navigate(notification.callLink.replace('http://localhost:5173', ''));
         toast.remove();
       });
     }
@@ -108,7 +110,7 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
   };
   
   useEffect(() => {
-    const storedCount = localStorage.getItem('coordinatorUnreadChat');
+    const storedCount = localStorage.getItem('mechanicUnreadChat');
     if (storedCount) setUnreadMessages(parseInt(storedCount));
   }, []);
   
@@ -118,7 +120,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
       'text-gray-300 hover:bg-blue-700/50 hover:text-white';
   };
   
-  // Initialize unread messages count
   useEffect(() => {
     const fetchInitialCount = async () => {
       try {
@@ -141,7 +142,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
     fetchInitialCount();
   }, [userId]);
 
-  // Initialize socket connection
   useEffect(() => {
     if (!token || !userId) return;
 
@@ -163,7 +163,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
       console.error('Mechanic sidebar socket error:', error);
     });
 
-    // Handle new chat notifications
     newSocket.on('new_chat_notification', (notification) => {
       if (location.pathname !== '/mechanic/chat') {
         const newCount = unreadMessages + 1;
@@ -176,8 +175,7 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
       if (location.pathname !== '/mechanic/chat') {
         const newCount = unreadMessages + 1;
         setUnreadMessages(newCount);
-        localStorage.setItem('coordinatorUnreadChat', newCount.toString());
-        // Add vibration
+        localStorage.setItem('mechanicUnreadChat', newCount.toString());
         if ('vibrate' in navigator) navigator.vibrate(200);
       }
     });
@@ -218,7 +216,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
     };
   }, [token, userId, location.pathname, unreadMessages]);
 
-  // Reset count when on chat page
   useEffect(() => {
     if (location.pathname === '/mechanic/chat') {
       setUnreadMessages(0);
@@ -226,15 +223,9 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
     }
   }, [location.pathname]);
 
-  const handleLogout = () => {
-    dispatch(clearEmployeeAuth());
-    navigate("/employee-login");
-    setShowLogoutDialog(false);
-  };
-
   const handleNavigation = (path: string) => {
     navigate(path);
-    if (onClose) onClose(); // Close sidebar on mobile after navigation
+    if (onClose) onClose();
   };
   
   const getInitials = () => {
@@ -306,7 +297,10 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
           <p className="text-xs uppercase tracking-wider text-blue-400 mb-2">Account</p>
           <nav className="space-y-1">
             <button 
-              onClick={() => setShowLogoutDialog(true)}
+              onClick={() => {
+                onLogoutClick(); // Call parent handler
+                if (onClose) onClose();
+              }}
               className="w-full flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-red-600/70 hover:text-white transition-all touch-manipulation min-h-[44px]"
             >
               <LogOut size={20} className="mr-3 flex-shrink-0" />
@@ -333,18 +327,6 @@ const MechanicSidebar: React.FC<MechanicSidebarProps> = ({ activePage, onClose }
           </div>
         </div>
       </button>
-
-      {/* Logout Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={showLogoutDialog}
-        onClose={() => setShowLogoutDialog(false)}
-        onConfirm={handleLogout}
-        title="Confirm Logout"
-        message="Are you sure you want to log out of your account?"
-        type="danger"
-        confirmText="Logout"
-        cancelText="Cancel"
-      />
     </div>
   );
 };
