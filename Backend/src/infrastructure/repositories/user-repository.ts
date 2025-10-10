@@ -125,6 +125,33 @@ export default class UserRepoImpl implements IUserRepository {
     );
   }
 
+  async getProductClientById(id: string): Promise<Client | null> {
+    const clientDoc = await ClientModel.findOne({"products._id" : id});
+    if (!clientDoc) return null;
+    const products: Product[] = clientDoc.products.map((p: any) => ({
+      id : p._id,
+      productName: p.productName,
+      quantity: p.quantity,
+      brand: p.brand,
+      model: p.model,
+      warrantyDate: p.warrantyDate,
+      guaranteeDate: p.guaranteeDate,
+    }));
+
+    return new Client(
+      clientDoc._id.toString(),
+      clientDoc.email,
+      clientDoc.clientName,
+      clientDoc.attendedDate,
+      clientDoc.contactNumber,
+      clientDoc.address,
+      products,
+      clientDoc.status,
+      clientDoc.isDeleted,
+      clientDoc._id.toString()
+    );
+  }
+
 
   async getAllClients(
     page: number = 1, 

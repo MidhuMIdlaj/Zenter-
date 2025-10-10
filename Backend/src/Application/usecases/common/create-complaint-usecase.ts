@@ -38,7 +38,7 @@ export class CreateComplaintUseCase implements ICreateComplaintUseCase {
       let productDetails = null;
       let clientDetails = null;
       if (data.selectedProductId) {
-        clientDetails = await this.userRepository.getClientById(data.selectedProductId);
+        clientDetails = await this.userRepository.getProductClientById(data.selectedProductId);
         if (!clientDetails) {
           return { success: false, error: 'Client with this product not found' };
         }

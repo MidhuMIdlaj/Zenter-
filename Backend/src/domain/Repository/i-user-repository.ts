@@ -18,6 +18,7 @@ export default interface IUserRepository {
   ): Promise<{ clients: Client[]; total: number }>;
   getCustomerEmails(): Promise<{ email: string; name: string }[]>;
   getClientById(id: string): Promise<Client | null>;
+  getProductClientById(id: string): Promise<Client | null>;
   softDeleteUser(id: string): Promise<boolean>;
   addProductsToClient(
     email: string,
